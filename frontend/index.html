@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4.1">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
   <!-- Three.js para renderizado 3D de disco de vinilo interactivo -->
@@ -46,21 +46,21 @@
 
       <!-- Segmented View Switcher Apple Liquid Glass (4 Tabs Principales + Más) -->
       <nav class="view-segmented-nav">
-        <button id="navBtnPlayer" class="seg-btn active" title="Reproductor Now Playing & Letras en Vivo">
+        <button id="navBtnPlayer" class="seg-btn active" onclick="switchView('player')" title="Reproductor Now Playing & Letras en Vivo">
           <i class="fa-solid fa-play"></i>
           <span>Reproductor</span>
           <span class="badge-mini-dot hidden" id="playerPlayingDot"></span>
         </button>
-        <button id="navBtnLibrary" class="seg-btn" title="Mi Biblioteca de Música Local">
+        <button id="navBtnLibrary" class="seg-btn" onclick="switchView('library')" title="Mi Biblioteca de Música Local">
           <i class="fa-solid fa-folder-music"></i>
           <span>Biblioteca</span>
           <span class="badge-counter-pill" id="navLibraryCount">0</span>
         </button>
-        <button id="navBtnDj" class="seg-btn" title="Consola DJ Apple Pro (DDJ Interactivo)">
+        <button id="navBtnDj" class="seg-btn" onclick="switchView('dj')" title="Consola DJ Apple Pro (DDJ Interactivo)">
           <i class="fa-solid fa-compact-disc"></i>
           <span>Consola DJ</span>
         </button>
-        <button id="navBtnDownloader" class="seg-btn" title="Descargador de Playlists y Videos HD">
+        <button id="navBtnDownloader" class="seg-btn" onclick="switchView('downloader')" title="Descargador de Playlists y Videos HD">
           <i class="fa-solid fa-cloud-arrow-down"></i>
           <span>Descargar</span>
         </button>
@@ -73,19 +73,19 @@
             <i class="fa-solid fa-chevron-down more-chevron"></i>
           </button>
           <div class="nav-dropdown-menu glass-panel hidden" id="navMoreMenu">
-            <button class="nav-dropdown-item" id="navItemDashboard">
+            <button class="nav-dropdown-item" id="navItemDashboard" onclick="switchView('dashboard')">
               <i class="fa-solid fa-house"></i>
               <span>Inicio 3D & iPod</span>
             </button>
-            <button class="nav-dropdown-item" id="navItemMood">
+            <button class="nav-dropdown-item" id="navItemMood" onclick="switchView('mood')">
               <i class="fa-solid fa-wand-magic-sparkles"></i>
               <span>IA Mood Studio</span>
             </button>
-            <button class="nav-dropdown-item" id="navItemStudio">
+            <button class="nav-dropdown-item" id="navItemStudio" onclick="switchView('studio')">
               <i class="fa-solid fa-scissors"></i>
               <span>Estudio & Stems</span>
             </button>
-            <button class="nav-dropdown-item" id="navItemChecklist">
+            <button class="nav-dropdown-item" id="navItemChecklist" onclick="switchView('checklist')">
               <i class="fa-solid fa-list-check"></i>
               <span>Checklist & Roadmap</span>
               <span class="badge-counter-pill badge-green" id="navChecklistPercent">100%</span>
@@ -392,9 +392,9 @@
           <!-- Contenedor Scrollable de Letras con Kinetic Typography -->
           <div class="lyrics-scroll-container" id="lyricsScrollContainer">
             <div class="lyrics-empty-placeholder" id="lyricsPlaceholder">
-              <div class="lyrics-spin-pulse"><i class="fa-solid fa-music"></i></div>
-              <h3>Sincronizando letra...</h3>
-              <p>Las letras sincronizadas aparecerán automáticamente al reproducir.</p>
+              <div class="lyrics-spin-pulse"><i class="fa-solid fa-microphone-lines"></i></div>
+              <h3>Letras en Vivo</h3>
+              <p>Selecciona una canción para comenzar la reproducción y ver los versos sincronizados en tiempo real.</p>
             </div>
             <div class="lyrics-lines-flow hidden" id="lyricsLinesFlow">
               <!-- Versos inyectados dinámicamente con timestamps [mm:ss.xx] -->
@@ -1251,7 +1251,8 @@
         <div class="modal-body mobile-guide-body">
           <div class="mobile-qr-box">
             <div class="qr-canvas-wrap">
-              <canvas id="qrCanvas" width="180" height="180"></canvas>
+              <img id="qrImg" src="" alt="Código QR Wi-Fi" style="width: 180px; height: 180px; border-radius: 12px; display: block; margin: 0 auto; box-shadow: 0 4px 14px rgba(0,0,0,0.3);" />
+              <canvas id="qrCanvas" width="180" height="180" style="display: none;"></canvas>
             </div>
             <div class="mobile-url-box">
               <label>Abre este enlace en tu teléfono (Misma red Wi-Fi):</label>
@@ -1450,6 +1451,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=4.1"></script>
 </body>
 </html>

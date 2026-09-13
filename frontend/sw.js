@@ -1,21 +1,21 @@
-// Arachiz Music — Service Worker para Soporte Offline y PWA
-const CACHE_NAME = "arachiz-music-v3";
+// Arachiz Music — Service Worker para Soporte Offline y PWA (v4.1)
+const CACHE_NAME = "arachiz-music-v4.1";
 const APP_SHELL = [
   "/",
   "/index.html",
-  "/style.css",
-  "/app.js",
+  "/style.css?v=4.1",
+  "/app.js?v=4.1",
   "/favicon.svg",
   "/manifest.json"
 ];
 
 self.addEventListener("install", (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_SHELL);
+      return cache.addAll(APP_SHELL).catch(() => {});
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -33,21 +33,19 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Estrategia Network-First: Siempre carga el código más reciente del servidor
+// Si no hay conexión o falla la red, recurre inmediatamente al cache offline
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   // No interceptar peticiones de streaming de audio grandes ni endpoints dinámicos del backend
-  if (url.pathname.startsWith("/api/stream") || url.pathname.startsWith("/api/download") || url.pathname.startsWith("/ws")) {
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/ws")) {
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        // Cachear recursos estáticos nuevos
+    fetch(event.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -55,9 +53,11 @@ self.addEventListener("fetch", (event) => {
           });
         }
         return networkResponse;
-      }).catch(() => {
-        return caches.match("/");
-      });
-    })
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cached) => {
+          return cached || caches.match("/");
+        });
+      })
   );
 });

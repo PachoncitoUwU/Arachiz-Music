@@ -75,7 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
 // ── Service Worker (PWA Offline) ──────────────────────────────────────────────
 function initServiceWorker() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      reg.update();
+    }).catch(() => {});
   }
 }
 
@@ -452,6 +454,27 @@ function setupLyricsEngine() {
       }
       btnAi.disabled = true;
       btnAi.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Transcribiendo con IA...`;
+
+      const placeholder = document.getElementById("lyricsPlaceholder");
+      const flow = document.getElementById("lyricsLinesFlow");
+      const badge = document.getElementById("lyricsStatusBadge");
+
+      if (placeholder) {
+        placeholder.innerHTML = `
+          <div class="lyrics-spin-pulse"><i class="fa-solid fa-wand-magic-sparkles fa-spin"></i></div>
+          <h3>Transcribiendo Audio con IA Whisper...</h3>
+          <p>Escuchando la voz y calculando timestamps sincronizados verso a verso. Esto toma ~20-30 segundos.</p>
+        `;
+        placeholder.classList.remove("hidden");
+      }
+      if (flow) flow.classList.add("hidden");
+      if (badge) {
+        badge.textContent = "Transcribiendo...";
+        badge.style.color = "#0A84FF";
+      }
+
+      showToast("Whisper IA Iniciado", `Transcribiendo voz para: ${activeTrack.title || "Canción"}`);
+
       try {
         const res = await fetch(`${API_URL}/api/lyrics/transcribe`, {
           method: "POST",
@@ -460,10 +483,25 @@ function setupLyricsEngine() {
         });
         const data = await res.json();
         if (data.success && data.lines && data.lines.length > 0) {
+          currentLyrics = data.lines;
           renderLyricsLines(data.lines);
+          if (badge) {
+            badge.textContent = "IA Whisper Sincronizada";
+            badge.style.color = "#30D158";
+          }
+          if (activeAudio) {
+            syncLyricsWithTime(activeAudio.currentTime);
+          }
           showToast("¡Letra Generada!", "La IA transcribió los versos y guardó el archivo .lrc sincronizado.");
         } else {
           showError("Transcripción IA", data.error || "No se pudo transcribir el audio.");
+          if (placeholder) {
+            placeholder.innerHTML = `
+              <div class="lyrics-spin-pulse"><i class="fa-solid fa-triangle-exclamation"></i></div>
+              <h3>No se pudo transcribir</h3>
+              <p>${escapeHtml(data.error || "Intenta de nuevo o reproduce otra canción.")}</p>
+            `;
+          }
         }
       } catch (err) {
         showError("Error", err.message);
@@ -579,9 +617,16 @@ function syncLyricsWithTime(currentTime) {
       el.classList.toggle("active-lyric", idx === bestIdx);
     });
 
-    // Auto-scroll suave centrado en la línea activa
+    // Auto-scroll suave centrado en la línea activa dentro del contenedor (sin mover la ventana)
     if (bestIdx >= 0 && allLines[bestIdx]) {
-      allLines[bestIdx].scrollIntoView({ behavior: "smooth", block: "center" });
+      const scrollContainer = document.getElementById("lyricsScrollContainer");
+      if (scrollContainer) {
+        const lineEl = allLines[bestIdx];
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const lineRect = lineEl.getBoundingClientRect();
+        const offset = (lineRect.top - containerRect.top) - (containerRect.height / 2) + (lineRect.height / 2);
+        scrollContainer.scrollBy({ top: offset, behavior: "smooth" });
+      }
     }
   }
 }
@@ -1297,17 +1342,24 @@ function setupMobileModal() {
   const btnCopy = document.getElementById("btnCopyMobileUrl");
   const urlInput = document.getElementById("mobileLanUrlInput");
 
+  // Pre-cargar la IP de red local para que esté lista al instante
+  const refreshNetworkInfo = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/network-info`);
+      if (res.ok) {
+        const data = await res.json();
+        if (urlInput) urlInput.value = data.mobile_url;
+        drawSimpleQRCode(data.mobile_url);
+      }
+    } catch (e) {}
+  };
+
+  refreshNetworkInfo();
+
   if (btnOpen && modal) {
     btnOpen.addEventListener("click", async () => {
       modal.classList.remove("hidden");
-      try {
-        const res = await fetch(`${API_URL}/api/network-info`);
-        if (res.ok) {
-          const data = await res.json();
-          if (urlInput) urlInput.value = data.mobile_url;
-          drawSimpleQRCode(data.mobile_url);
-        }
-      } catch (e) {}
+      await refreshNetworkInfo();
     });
   }
 
@@ -1327,48 +1379,28 @@ function setupMobileModal() {
 }
 
 function drawSimpleQRCode(text) {
+  const qrImg = document.getElementById("qrImg");
   const canvas = document.getElementById("qrCanvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(text)}&margin=3&bgcolor=255-255-255&color=0-0-0`;
 
-  // Generador de matriz visual representativa Apple para código QR escaneable
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, 180, 180);
+  if (qrImg) {
+    qrImg.onerror = () => {
+      // Fallback a QuickChart QR en caso de bloqueo de red
+      qrImg.src = `https://quickchart.io/qr?text=${encodeURIComponent(text)}&size=220&margin=2`;
+    };
+    qrImg.src = qrUrl;
+    qrImg.style.display = "block";
+  }
 
-  ctx.fillStyle = "#000000";
-  const size = 180;
-  const cellSize = 6;
-  const count = Math.floor(size / cellSize);
-
-  // Cuadros esquinas (Position Markers)
-  const drawCorner = (startX, startY) => {
-    ctx.fillRect(startX, startY, 7 * cellSize, 7 * cellSize);
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(startX + cellSize, startY + cellSize, 5 * cellSize, 5 * cellSize);
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(startX + 2 * cellSize, startY + 2 * cellSize, 3 * cellSize, 3 * cellSize);
-  };
-
-  drawCorner(cellSize, cellSize);
-  drawCorner((count - 8) * cellSize, cellSize);
-  drawCorner(cellSize, (count - 8) * cellSize);
-
-  // Módulo de datos pseudo-estable según hash del texto
-  for (let r = 0; r < count; r++) {
-    for (let c = 0; c < count; c++) {
-      if (
-        (r < 9 && c < 9) ||
-        (r < 9 && c > count - 10) ||
-        (r > count - 10 && c < 9)
-      ) {
-        continue;
-      }
-      const val = (r * 17 + c * 31 + text.length * 13) % 7;
-      if (val === 0 || val === 3 || val === 5) {
-        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
-      }
-    }
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = qrUrl;
   }
 }
 
@@ -1405,7 +1437,24 @@ function initViewNavigation() {
   if (navBtnMore && navMoreMenu) {
     navBtnMore.addEventListener("click", (e) => {
       e.stopPropagation();
-      navMoreMenu.classList.toggle("hidden");
+      const isHidden = navMoreMenu.classList.contains("hidden");
+      if (isHidden) {
+        const rect = navBtnMore.getBoundingClientRect();
+        navMoreMenu.style.position = "fixed";
+        const menuWidth = 220;
+        let leftPos = rect.left;
+        if (leftPos + menuWidth > window.innerWidth - 10) {
+          leftPos = window.innerWidth - menuWidth - 10;
+        }
+        if (leftPos < 10) leftPos = 10;
+        navMoreMenu.style.setProperty("top", `${rect.bottom + 8}px`, "important");
+        navMoreMenu.style.setProperty("left", `${leftPos}px`, "important");
+        navMoreMenu.style.setProperty("right", "auto", "important");
+        navMoreMenu.style.setProperty("z-index", "999999", "important");
+        navMoreMenu.classList.remove("hidden");
+      } else {
+        navMoreMenu.classList.add("hidden");
+      }
     });
 
     document.addEventListener("click", (e) => {
@@ -1451,6 +1500,34 @@ function initViewNavigation() {
     if (viewName === "downloader") {
       const inp = document.getElementById("urlInput");
       if (inp) setTimeout(() => inp.focus(), 250);
+    }
+
+    // Inicializar y auto-cargar la Consola DJ inmediatamente
+    if (viewName === "dj") {
+      try {
+        if (typeof DjEngine !== "undefined" && DjEngine.init) {
+          DjEngine.init();
+        }
+        if (typeof window.populateDjSelectors === "function") {
+          window.populateDjSelectors();
+        }
+        const tracks = libraryData.tracks || [];
+        if (tracks.length > 0 && typeof DjEngine !== "undefined") {
+          if (!DjEngine.deckA.track) {
+            DjEngine.loadTrack("a", tracks[0]);
+            const selA = document.getElementById("djDeckATrackSelect");
+            if (selA) selA.value = tracks[0].id;
+          }
+          if (!DjEngine.deckB.track) {
+            const trackB = tracks.length > 1 ? tracks[1] : tracks[0];
+            DjEngine.loadTrack("b", trackB);
+            const selB = document.getElementById("djDeckBTrackSelect");
+            if (selB) selB.value = trackB.id;
+          }
+        }
+      } catch (djErr) {
+        console.warn("[DJ View Activation Safe Catch]:", djErr);
+      }
     }
   };
 
@@ -2802,77 +2879,101 @@ const DjEngine = {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       this.ctx = new AudioCtx();
     }
-    if (this.ctx.state === "suspended") {
-      this.ctx.resume();
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
     }
   },
 
   init() {
-    if (this.isInitialized) return;
+    if (this.isInitialized) {
+      this.ensureContext();
+      return;
+    }
     this.ensureContext();
+    if (!this.ctx) return;
 
-    this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 1.0;
-    this.masterGain.connect(this.ctx.destination);
+    if (!this.masterGain) {
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = 1.0;
+      this.masterGain.connect(this.ctx.destination);
+    }
 
     // Configurar Deck A
     this.deckA.audio = document.getElementById("deckAAudioElement");
-    if (this.deckA.audio) {
-      this.deckA.srcNode = this.ctx.createMediaElementSource(this.deckA.audio);
-      this.deckA.eqLow = this.ctx.createBiquadFilter();
-      this.deckA.eqLow.type = "lowshelf";
-      this.deckA.eqLow.frequency.value = 320;
+    if (this.deckA.audio && !this.deckA.srcNode) {
+      try {
+        this.deckA.srcNode = this.ctx.createMediaElementSource(this.deckA.audio);
+      } catch (e) {
+        console.warn("MediaElementSource Deck A:", e);
+      }
+      try {
+        this.deckA.eqLow = this.ctx.createBiquadFilter();
+        this.deckA.eqLow.type = "lowshelf";
+        this.deckA.eqLow.frequency.value = 320;
 
-      this.deckA.eqMid = this.ctx.createBiquadFilter();
-      this.deckA.eqMid.type = "peaking";
-      this.deckA.eqMid.frequency.value = 1200;
-      this.deckA.eqMid.Q.value = 1.0;
+        this.deckA.eqMid = this.ctx.createBiquadFilter();
+        this.deckA.eqMid.type = "peaking";
+        this.deckA.eqMid.frequency.value = 1200;
+        this.deckA.eqMid.Q.value = 1.0;
 
-      this.deckA.eqHigh = this.ctx.createBiquadFilter();
-      this.deckA.eqHigh.type = "highshelf";
-      this.deckA.eqHigh.frequency.value = 3200;
+        this.deckA.eqHigh = this.ctx.createBiquadFilter();
+        this.deckA.eqHigh.type = "highshelf";
+        this.deckA.eqHigh.frequency.value = 3200;
 
-      this.deckA.gainNode = this.ctx.createGain();
-      this.deckA.analyser = this.ctx.createAnalyser();
-      this.deckA.analyser.fftSize = 64;
+        this.deckA.gainNode = this.ctx.createGain();
+        this.deckA.analyser = this.ctx.createAnalyser();
+        this.deckA.analyser.fftSize = 64;
 
-      this.deckA.srcNode
-        .connect(this.deckA.eqLow)
-        .connect(this.deckA.eqMid)
-        .connect(this.deckA.eqHigh)
-        .connect(this.deckA.gainNode)
-        .connect(this.deckA.analyser)
-        .connect(this.masterGain);
+        if (this.deckA.srcNode) {
+          this.deckA.srcNode.connect(this.deckA.eqLow);
+          this.deckA.eqLow.connect(this.deckA.eqMid);
+          this.deckA.eqMid.connect(this.deckA.eqHigh);
+          this.deckA.eqHigh.connect(this.deckA.gainNode);
+          this.deckA.gainNode.connect(this.deckA.analyser);
+          this.deckA.analyser.connect(this.masterGain);
+        }
+      } catch (e) {
+        console.warn("Deck A chain error:", e);
+      }
     }
 
     // Configurar Deck B
     this.deckB.audio = document.getElementById("deckBAudioElement");
-    if (this.deckB.audio) {
-      this.deckB.srcNode = this.ctx.createMediaElementSource(this.deckB.audio);
-      this.deckB.eqLow = this.ctx.createBiquadFilter();
-      this.deckB.eqLow.type = "lowshelf";
-      this.deckB.eqLow.frequency.value = 320;
+    if (this.deckB.audio && !this.deckB.srcNode) {
+      try {
+        this.deckB.srcNode = this.ctx.createMediaElementSource(this.deckB.audio);
+      } catch (e) {
+        console.warn("MediaElementSource Deck B:", e);
+      }
+      try {
+        this.deckB.eqLow = this.ctx.createBiquadFilter();
+        this.deckB.eqLow.type = "lowshelf";
+        this.deckB.eqLow.frequency.value = 320;
 
-      this.deckB.eqMid = this.ctx.createBiquadFilter();
-      this.deckB.eqMid.type = "peaking";
-      this.deckB.eqMid.frequency.value = 1200;
-      this.deckB.eqMid.Q.value = 1.0;
+        this.deckB.eqMid = this.ctx.createBiquadFilter();
+        this.deckB.eqMid.type = "peaking";
+        this.deckB.eqMid.frequency.value = 1200;
+        this.deckB.eqMid.Q.value = 1.0;
 
-      this.deckB.eqHigh = this.ctx.createBiquadFilter();
-      this.deckB.eqHigh.type = "highshelf";
-      this.deckB.eqHigh.frequency.value = 3200;
+        this.deckB.eqHigh = this.ctx.createBiquadFilter();
+        this.deckB.eqHigh.type = "highshelf";
+        this.deckB.eqHigh.frequency.value = 3200;
 
-      this.deckB.gainNode = this.ctx.createGain();
-      this.deckB.analyser = this.ctx.createAnalyser();
-      this.deckB.analyser.fftSize = 64;
+        this.deckB.gainNode = this.ctx.createGain();
+        this.deckB.analyser = this.ctx.createAnalyser();
+        this.deckB.analyser.fftSize = 64;
 
-      this.deckB.srcNode
-        .connect(this.deckB.eqLow)
-        .connect(this.deckB.eqMid)
-        .connect(this.deckB.eqHigh)
-        .connect(this.deckB.gainNode)
-        .connect(this.deckB.analyser)
-        .connect(this.masterGain);
+        if (this.deckB.srcNode) {
+          this.deckB.srcNode.connect(this.deckB.eqLow);
+          this.deckB.eqLow.connect(this.deckB.eqMid);
+          this.deckB.eqMid.connect(this.deckB.eqHigh);
+          this.deckB.eqHigh.connect(this.deckB.gainNode);
+          this.deckB.gainNode.connect(this.deckB.analyser);
+          this.deckB.analyser.connect(this.masterGain);
+        }
+      } catch (e) {
+        console.warn("Deck B chain error:", e);
+      }
     }
 
     this.updateCrossfader(0.5);
@@ -2922,19 +3023,31 @@ const DjEngine = {
     const btnPlay = document.getElementById(deckKey === "a" ? "btnDeckAPlay" : "btnDeckBPlay");
     const jog = document.getElementById(deckKey === "a" ? "deckAJogWheel" : "deckBJogWheel");
 
-    if (!deck.audio || !deck.audio.src) {
-      showError("Deck Vacío", `Carga primero una canción en el Deck ${deckKey.toUpperCase()}.`);
-      return;
+    if (!deck.audio || !deck.audio.src || !deck.track) {
+      // Auto-cargar primera pista si la biblioteca tiene canciones
+      const tracks = libraryData.tracks || [];
+      if (tracks.length > 0) {
+        const trk = deckKey === "a" ? tracks[0] : (tracks[1] || tracks[0]);
+        this.loadTrack(deckKey, trk);
+        const sel = document.getElementById(deckKey === "a" ? "djDeckATrackSelect" : "djDeckBTrackSelect");
+        if (sel) sel.value = trk.id;
+      } else {
+        showError("Deck Vacío", `Descarga canciones a tu biblioteca para usarlas en el Deck ${deckKey.toUpperCase()}.`);
+        return;
+      }
     }
 
     if (deck.audio.paused) {
-      deck.audio.play().catch(() => {});
-      deck.isPlaying = true;
-      if (btnPlay) {
-        btnPlay.classList.add("playing");
-        btnPlay.innerHTML = `<i class="fa-solid fa-pause"></i>`;
-      }
-      if (jog) jog.classList.add("spin-deck");
+      deck.audio.play().then(() => {
+        deck.isPlaying = true;
+        if (btnPlay) {
+          btnPlay.classList.add("playing");
+          btnPlay.innerHTML = `<i class="fa-solid fa-pause"></i>`;
+        }
+        if (jog) jog.classList.add("spin-deck");
+      }).catch((e) => {
+        console.warn("Deck play error", e);
+      });
     } else {
       deck.audio.pause();
       deck.isPlaying = false;
@@ -3175,6 +3288,8 @@ function setupDjConsole() {
         tracks.map((t) => `<option value="${t.id}">${escapeHtml(t.title)} - ${escapeHtml(t.artist)}</option>`).join("");
     }
   };
+
+  window.populateDjSelectors = populateDjSelectors;
 
   if (selectA) {
     selectA.addEventListener("change", (e) => {
