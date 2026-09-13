@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Arachiz Music - Apple Liquid Glass Sound Studio & Player</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0A84FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Arachiz Music: Reproductor de música Apple Liquid Glass con letras sincronizadas universales, Smart Mood shuffle, PWA offline para celular y estudio de audio.">
+  
+  <!-- Apple UI Typography: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Three.js para renderizado 3D de disco de vinilo interactivo -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <!-- Canvas de Partículas Interactivas en Movimiento 3D -->
+  <canvas id="ambientParticleCanvas" class="ambient-particle-canvas"></canvas>
+
+  <!-- Resplandores ambientales dinámicos neutros Apple (adaptables a la carátula) -->
+  <div class="ambient-glow glow-primary" id="ambientGlow1"></div>
+  <div class="ambient-glow glow-secondary" id="ambientGlow2"></div>
+
+  <div class="app-shell">
+    <!-- Barra Superior Apple Ultra-Limpia -->
+    <header class="top-nav glass-panel">
+      <div class="brand-badge" id="navBrandLogo" role="button" title="Ir al Menú Principal">
+        <div class="brand-liquid-icon">
+          <div class="liquid-sphere"></div>
+          <i class="fa-solid fa-wave-square"></i>
+        </div>
+        <div class="brand-titles">
+          <span class="brand-name">Arachiz <span>Music</span></span>
+          <span class="brand-tagline">Apple Liquid Studio</span>
+        </div>
+      </div>
+
+      <!-- Segmented View Switcher Apple Liquid Glass (4 Tabs Principales + Más) -->
+      <nav class="view-segmented-nav">
+        <button id="navBtnPlayer" class="seg-btn active" title="Reproductor Now Playing & Letras en Vivo">
+          <i class="fa-solid fa-play"></i>
+          <span>Reproductor</span>
+          <span class="badge-mini-dot hidden" id="playerPlayingDot"></span>
+        </button>
+        <button id="navBtnLibrary" class="seg-btn" title="Mi Biblioteca de Música Local">
+          <i class="fa-solid fa-folder-music"></i>
+          <span>Biblioteca</span>
+          <span class="badge-counter-pill" id="navLibraryCount">0</span>
+        </button>
+        <button id="navBtnDj" class="seg-btn" title="Consola DJ Apple Pro (DDJ Interactivo)">
+          <i class="fa-solid fa-compact-disc"></i>
+          <span>Consola DJ</span>
+        </button>
+        <button id="navBtnDownloader" class="seg-btn" title="Descargador de Playlists y Videos HD">
+          <i class="fa-solid fa-cloud-arrow-down"></i>
+          <span>Descargar</span>
+        </button>
+
+        <!-- Dropdown Desplegable Más Herramientas -->
+        <div class="nav-dropdown-wrapper">
+          <button id="navBtnMore" class="seg-btn btn-more" title="Más herramientas y vistas">
+            <i class="fa-solid fa-ellipsis"></i>
+            <span>Más</span>
+            <i class="fa-solid fa-chevron-down more-chevron"></i>
+          </button>
+          <div class="nav-dropdown-menu glass-panel hidden" id="navMoreMenu">
+            <button class="nav-dropdown-item" id="navItemDashboard">
+              <i class="fa-solid fa-house"></i>
+              <span>Inicio 3D & iPod</span>
+            </button>
+            <button class="nav-dropdown-item" id="navItemMood">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              <span>IA Mood Studio</span>
+            </button>
+            <button class="nav-dropdown-item" id="navItemStudio">
+              <i class="fa-solid fa-scissors"></i>
+              <span>Estudio & Stems</span>
+            </button>
+            <button class="nav-dropdown-item" id="navItemChecklist">
+              <i class="fa-solid fa-list-check"></i>
+              <span>Checklist & Roadmap</span>
+              <span class="badge-counter-pill badge-green" id="navChecklistPercent">100%</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <div class="nav-controls">
+        <!-- Selector de Perfil de Dispositivo -->
+        <button id="btnProfileSelector" class="nav-profile-pill" title="Gestionar Perfil y Dispositivo">
+          <i class="fa-solid fa-circle-user"></i>
+          <span id="navProfileName">PC Principal</span>
+        </button>
+
+        <!-- Conmutador Online / Offline -->
+        <button id="btnToggleOffline" class="nav-offline-pill online" title="Cambiar entre Modo Online y Modo Offline">
+          <i class="fa-solid fa-wifi" id="navOfflineIcon"></i>
+          <span id="navOfflineLabel">Online</span>
+        </button>
+
+        <!-- Conectar Celular vía Wi-Fi -->
+        <button id="btnOpenMobileModal" class="btn-icon-circle" title="Conectar Celular (iPhone / Android) vía Wi-Fi">
+          <i class="fa-solid fa-mobile-screen-button"></i>
+        </button>
+
+        <!-- Cambiar Tema Claro / Oscuro -->
+        <button id="btnThemeToggle" class="btn-icon-circle" title="Cambiar Tema (Claro / Oscuro)">
+          <i class="fa-solid fa-sun"></i>
+        </button>
+
+        <!-- Ajustes -->
+        <button id="btnOpenSettings" class="btn-icon-circle" title="Ajustes y Carpeta">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+
+        <!-- Ver Música / Abrir Carpeta en Windows -->
+        <button id="btnOpenDownloads" class="btn-pill-primary" title="Abrir carpeta de música en el Explorador de Windows">
+          <i class="fa-regular fa-folder-open"></i>
+          <span>Ver Música</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 1: DASHBOARD / INICIO 3D INTERACTIVO                            -->
+    <!-- ===================================================================== -->
+    <section id="viewDashboard" class="app-view hidden-view">
+      <div class="dashboard-hero-wrap">
+        <div class="apple-tag-badge">
+          <span class="pulse-dot"></span> Arachiz Music Sound Studio
+        </div>
+        <h1 class="dashboard-title">
+          Toda tu música. <br/>
+          <span class="gradient-text">En tus manos.</span>
+        </h1>
+        <p class="dashboard-subtitle">
+          Reproductor con letras sincronizadas estilo Apple Music, Smart Mood shuffle con IA, biblioteca offline y estudio de audio con separación de voz y beat.
+        </p>
+
+        <!-- Botones Hero de Acción Rápida -->
+        <div class="hero-cta-container">
+          <button id="btnHeroGoPlayer" class="btn-dashboard-cta" title="Abrir reproductor de música">
+            <i class="fa-solid fa-play"></i>
+            <span>Abrir Reproductor</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+          <button id="btnHeroGoLibrary" class="btn-dashboard-secondary" title="Explorar biblioteca de canciones">
+            <i class="fa-solid fa-music"></i>
+            <span>Ver Biblioteca (<span id="dashLibCount">0</span>)</span>
+          </button>
+          <button id="btnDashboardCTA" class="btn-dashboard-secondary" title="Descargar canciones nuevas">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>Descargador</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Escena 3D Interactiva Integrada (Three.js Vinilo + iPod Classic Apple) -->
+      <div class="dashboard-3d-stage">
+        <!-- Canvas WebGL 3D Dinámico -->
+        <div class="webgl-container" id="webglContainer" title="Arrastra con el mouse para rotar en 3D">
+          <canvas id="threeCanvas3D"></canvas>
+          <div class="canvas-3d-hint">
+            <i class="fa-solid fa-hand-pointer"></i> Arrastra el cursor para orbitar el disco de vinilo 3D
+          </div>
+        </div>
+
+        <!-- Reproductor iPod Classic 3D Apple -->
+        <div class="ipod-showcase-container">
+          <div class="ipod-container" id="ipod3dCard">
+            <div class="ipod-body">
+              <div class="ipod-jack-plug"></div>
+              
+              <!-- Pantalla a color del iPod -->
+              <div class="ipod-screen">
+                <div class="ipod-screen-header">
+                  <span id="ipodBatteryIcon"><i class="fa-solid fa-battery-three-quarters"></i></span>
+                  <span id="ipodNowPlayingTitle">Arachiz Player</span>
+                  <span id="ipodPlayStatus"><i class="fa-solid fa-play"></i></span>
+                </div>
+                <div class="ipod-screen-content">
+                  <div class="ipod-art-wrap">
+                    <img id="ipodAlbumArt" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300" alt="iPod Art" />
+                  </div>
+                  <div class="ipod-track-info">
+                    <div id="ipodSongTitle" class="ipod-text-bold">Cargando música...</div>
+                    <div id="ipodArtistName" class="ipod-text-dim">Arachiz Music</div>
+                    <div class="ipod-timeline-bar">
+                      <div id="ipodTimelineFill" class="ipod-timeline-fill" style="width: 35%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rueda de Clic Táctil (Click Wheel) -->
+              <div class="click-wheel" id="clickWheel">
+                <button class="wheel-btn wheel-top" id="btnWheelMenu">MENU</button>
+                <button class="wheel-btn wheel-left" id="btnWheelPrev"><i class="fa-solid fa-backward-step"></i></button>
+                <button class="wheel-btn wheel-right" id="btnWheelNext"><i class="fa-solid fa-forward-step"></i></button>
+                <button class="wheel-btn wheel-bottom" id="btnWheelPlay"><i class="fa-solid fa-play"></i><i class="fa-solid fa-pause"></i></button>
+                <button class="wheel-center-btn" id="btnWheelSelect" title="Reproducir / Pausar"></button>
+              </div>
+            </div>
+
+            <div class="ipod-hint">
+              <span><i class="fa-solid fa-compact-disc"></i> Gira la rueda del mouse o haz clic para interactuar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid de Características Apple Liquid Glass -->
+      <div class="dashboard-features-grid">
+        <div class="feature-card glass-panel" id="cardFeatLyrics">
+          <div class="feat-icon-box feat-blue">
+            <i class="fa-solid fa-microphone-lines"></i>
+          </div>
+          <div class="feat-content">
+            <h3>Letras Sincronizadas en Vivo</h3>
+            <p>Visualización cinética tipo Apple Music con scroll automático y respaldo de transcripción IA.</p>
+          </div>
+        </div>
+
+        <div class="feature-card glass-panel" id="cardFeatMood">
+          <div class="feat-icon-box feat-green">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <div class="feat-content">
+            <h3>Smart Mood Shuffle</h3>
+            <p>Secuencias inteligentes de 5 a 7 canciones del mismo mood y modulación armónica suave.</p>
+          </div>
+        </div>
+
+        <div class="feature-card glass-panel" id="cardFeatCrossfade">
+          <div class="feat-icon-box feat-silver">
+            <i class="fa-solid fa-sliders"></i>
+          </div>
+          <div class="feat-content">
+            <h3>Crossfade & Colores Dinámicos</h3>
+            <p>Fusión suave entre canciones sin cortes y ambientación líquida que extrae los colores del cover.</p>
+          </div>
+        </div>
+
+        <div class="feature-card glass-panel" id="cardFeatStudio">
+          <div class="feat-icon-box feat-red">
+            <i class="fa-solid fa-scissors"></i>
+          </div>
+          <div class="feat-content">
+            <h3>Estudio de Audio & Stems</h3>
+            <p>Recorte preciso, combinación de canciones y aislamiento de Solo Voz vs Solo Beat.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 2: REPRODUCTOR NOW PLAYING & LETRAS SINCRONIZADAS (KARAOKE)    -->
+    <!-- ===================================================================== -->
+    <section id="viewPlayer" class="app-view active-view">
+      <div class="player-studio-layout">
+        <!-- Columna Izquierda: Carátula / Video Oficial, Metadatos y Controles -->
+        <div class="player-left-stage glass-panel">
+          <!-- Conmutador de Carátula HD vs Video Oficial HD -->
+          <div class="player-media-mode-header">
+            <div class="media-segmented-pill">
+              <button id="btnMediaCover" class="media-seg-btn active" title="Ver Carátula Oficial en Alta Definición">
+                <i class="fa-solid fa-compact-disc"></i>
+                <span>Carátula HD</span>
+              </button>
+              <button id="btnMediaVideo" class="media-seg-btn" title="Ver Video Oficial HD sincronizado">
+                <i class="fa-solid fa-film"></i>
+                <span>Video Oficial HD</span>
+              </button>
+            </div>
+            <button id="btnChangeCustomCover" class="btn-icon-subtle" title="Editar Carátula o cambiar enlace de video">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+          </div>
+
+          <!-- Marco de Visualización: Carátula o Video Oficial -->
+          <div class="player-art-frame" id="playerMediaFrame">
+            <!-- Vista 1: Carátula HD -->
+            <div class="player-cover-wrap" id="playerCoverWrap">
+              <div class="player-vinyl-shadow"></div>
+              <img id="mainPlayerCover" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600" alt="Cover" class="player-large-cover" />
+              <div class="player-format-pill" id="mainPlayerFormatBadge">MP3 320K</div>
+            </div>
+
+            <!-- Vista 2: Video Oficial HD (YouTube Embed o MP4 local) -->
+            <div class="player-video-wrap hidden" id="playerVideoWrap">
+              <iframe id="mainOfficialVideoIframe" class="official-video-frame hidden" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+              <video id="mainOfficialVideoPlayer" class="official-video-local hidden" controls playsinline></video>
+              <div id="videoLoadingHint" class="video-loading-placeholder hidden">
+                <div class="lyrics-spin-pulse"><i class="fa-solid fa-video"></i></div>
+                <h4>Cargando Video Oficial HD...</h4>
+                <p>Conectando con el video original en YouTube...</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="player-meta-block">
+            <h2 id="mainPlayerTitle" class="player-hero-title">Selecciona una canción</h2>
+            <p id="mainPlayerArtist" class="player-hero-artist">Arachiz Music Library</p>
+            <span id="mainPlayerAlbum" class="player-hero-album">Biblioteca General</span>
+          </div>
+
+          <!-- Timeline Slider Interactivo con Waveform -->
+          <div class="player-timeline-wrap">
+            <div class="timeline-readouts">
+              <span id="mainPlayerCurTime" class="time-stamp tabular">0:00</span>
+              <span id="mainPlayerDuration" class="time-stamp tabular">0:00</span>
+            </div>
+            <div class="custom-progress-track" id="mainTimelineTrack">
+              <div class="custom-progress-fill" id="mainTimelineFill" style="width: 0%;"></div>
+              <div class="custom-progress-thumb" id="mainTimelineThumb" style="left: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- Controles de Reproducción Principales -->
+          <div class="player-controls-row">
+            <button id="btnPlayerShuffle" class="btn-control-subtle" title="Smart Mood Shuffle">
+              <i class="fa-solid fa-shuffle"></i>
+            </button>
+            <button id="btnPlayerPrev" class="btn-control-step" title="Canción anterior">
+              <i class="fa-solid fa-backward-step"></i>
+            </button>
+            <button id="btnPlayerMainPlay" class="btn-control-hero-play" title="Reproducir / Pausar">
+              <i class="fa-solid fa-play"></i>
+            </button>
+            <button id="btnPlayerNext" class="btn-control-step" title="Canción siguiente">
+              <i class="fa-solid fa-forward-step"></i>
+            </button>
+            <button id="btnPlayerRepeat" class="btn-control-subtle" title="Repetir canción">
+              <i class="fa-solid fa-repeat"></i>
+            </button>
+          </div>
+
+          <!-- Barra de Ajuste de Crossfade & Volumen -->
+          <div class="player-audio-options-bar">
+            <div class="crossfade-selector-group">
+              <label for="crossfadeSelect"><i class="fa-solid fa-arrows-split-up-and-left"></i> Crossfade:</label>
+              <select id="crossfadeSelect" class="apple-clean-dropdown dropdown-sm">
+                <option value="0">Sin Crossfade (0s)</option>
+                <option value="2">Suave (2s)</option>
+                <option value="4" selected>Estándar (4s)</option>
+                <option value="6">Profundo (6s)</option>
+                <option value="8">Cinemático (8s)</option>
+                <option value="12">Máximo (12s)</option>
+              </select>
+            </div>
+
+            <div class="volume-slider-group">
+              <i class="fa-solid fa-volume-high" id="volumeIcon"></i>
+              <input type="range" id="mainVolumeSlider" min="0" max="1" step="0.01" value="0.9" class="apple-volume-range" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Letras Sincronizadas (Cinematic Apple Music Lyrics) -->
+        <div class="lyrics-right-stage glass-panel">
+          <div class="lyrics-header-bar">
+            <div class="lyrics-title-lead">
+              <i class="fa-solid fa-quote-left"></i>
+              <span>Letras Sincronizadas</span>
+              <span id="lyricsStatusBadge" class="badge-status-synced">Auto-Sync</span>
+            </div>
+            <div class="lyrics-actions">
+              <!-- Calibrador de Tiempo / Desfase de Letras -->
+              <div class="lyrics-offset-group" title="Ajustar sincronización de la letra (+/- segundos)">
+                <button id="btnLyricMinus" class="btn-offset-micro" title="Atrasar letra 0.5 segundos">-0.5s</button>
+                <span id="lyricOffsetDisplay" class="lyric-offset-badge tabular">0.0s</span>
+                <button id="btnLyricPlus" class="btn-offset-micro" title="Adelantar letra 0.5 segundos">+0.5s</button>
+                <button id="btnLyricReset" class="btn-offset-micro" title="Restablecer desfase">0.0</button>
+              </div>
+
+              <button id="btnAiTranscribe" class="btn-pill-secondary btn-sm" title="Transcribir con IA Whisper si la canción no tiene letra en internet">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> IA Whisper
+              </button>
+              <button id="btnCopyLyrics" class="btn-icon-subtle" title="Copiar letra"><i class="fa-regular fa-clipboard"></i></button>
+            </div>
+          </div>
+
+          <!-- Contenedor Scrollable de Letras con Kinetic Typography -->
+          <div class="lyrics-scroll-container" id="lyricsScrollContainer">
+            <div class="lyrics-empty-placeholder" id="lyricsPlaceholder">
+              <div class="lyrics-spin-pulse"><i class="fa-solid fa-music"></i></div>
+              <h3>Sincronizando letra...</h3>
+              <p>Las letras sincronizadas aparecerán automáticamente al reproducir.</p>
+            </div>
+            <div class="lyrics-lines-flow hidden" id="lyricsLinesFlow">
+              <!-- Versos inyectados dinámicamente con timestamps [mm:ss.xx] -->
+            </div>
+          </div>
+
+          <div class="lyrics-footer-hint">
+            <i class="fa-solid fa-hand-pointer"></i> Haz clic en cualquier verso para saltar directamente a ese segundo
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA NUEVA: CONSOLA DJ APPLE LIQUID GLASS (DDJ INTERACTIVO DUAL DECK)-->
+    <!-- ===================================================================== -->
+    <section id="viewDj" class="app-view hidden-view">
+      <div class="dj-console-chassis glass-panel">
+        <!-- Barra Superior de la Consola DJ -->
+        <div class="dj-top-bar">
+          <div class="dj-brand-tag">
+            <span class="dj-live-led"></span>
+            <strong>DDJ-ARACHIZ</strong> <span>PRO GLASS STUDIO</span>
+          </div>
+
+          <div class="dj-quick-actions">
+            <button id="btnDjBpmSync" class="btn-pill-secondary btn-sm" title="Sincronizar BPM de Deck A y Deck B">
+              <i class="fa-solid fa-bolt"></i> BPM SYNC
+            </button>
+            <button id="btnDjAutoMix" class="btn-pill-action btn-sm" title="Auto-transición suave de 4 segundos entre Decks">
+              <i class="fa-solid fa-arrows-split-up-and-left"></i> Auto-Mix 4s
+            </button>
+          </div>
+        </div>
+
+        <!-- Escenario Principal DDJ: Deck A | Mixer Central & Pads | Deck B -->
+        <div class="dj-main-deck-row">
+          <!-- ==================== DECK A (IZQUIERDA - AZUL) ==================== -->
+          <div class="dj-deck-card deck-a glass-panel">
+            <div class="deck-header">
+              <div class="deck-badge badge-a">DECK A</div>
+              <select id="djDeckATrackSelect" class="apple-clean-dropdown dropdown-sm dj-track-select">
+                <option value="">-- Cargar Canción en Deck A --</option>
+              </select>
+            </div>
+
+            <div class="deck-meta">
+              <span id="djDeckATitle" class="deck-track-title">Sin pista cargada</span>
+              <span id="djDeckAArtist" class="deck-track-artist">Selecciona una canción arriba</span>
+            </div>
+
+            <!-- Plato Giratorio / Turntable Deck A -->
+            <div class="turntable-wrapper" id="deckATurntableWrap">
+              <div class="turntable-jog-wheel" id="deckAJogWheel">
+                <div class="jog-outer-ring ring-blue"></div>
+                <div class="jog-vinyl-grooves">
+                  <div class="jog-center-label">
+                    <img id="deckACover" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=120" alt="Deck A Cover" />
+                    <div class="jog-spindle"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="jog-scratch-hint"><i class="fa-solid fa-hand-pointer"></i> Arrastra el vinilo para scratchear</div>
+            </div>
+
+            <!-- VU Meter Deck A + Controles de Transporte -->
+            <div class="deck-meter-and-controls">
+              <div class="dj-vu-meter" id="deckAVuMeter">
+                <div class="vu-leds" id="deckALeds">
+                  <span class="led-dot g"></span><span class="led-dot g"></span>
+                  <span class="led-dot g"></span><span class="led-dot y"></span>
+                  <span class="led-dot r"></span>
+                </div>
+              </div>
+
+              <div class="deck-transport-row">
+                <button id="btnDeckACue" class="btn-dj-round btn-cue" title="CUE: Regresar al punto 0">CUE</button>
+                <button id="btnDeckAPlay" class="btn-dj-round btn-play" title="Play / Pause Deck A">
+                  <i class="fa-solid fa-play"></i>
+                </button>
+                <button id="btnDeckASync" class="btn-dj-round btn-sync" title="Igualar BPM al Deck B">SYNC</button>
+              </div>
+            </div>
+
+            <!-- EQ 3 Bandas & Pitch Fader Deck A -->
+            <div class="deck-controls-lower">
+              <div class="deck-eq-cluster">
+                <div class="eq-knob-unit">
+                  <label>HIGH</label>
+                  <input type="range" id="deckAEqHigh" min="-24" max="12" step="0.5" value="0" class="apple-eq-slider" />
+                  <span id="deckAEqHighVal">0dB</span>
+                </div>
+                <div class="eq-knob-unit">
+                  <label>MID</label>
+                  <input type="range" id="deckAEqMid" min="-24" max="12" step="0.5" value="0" class="apple-eq-slider" />
+                  <span id="deckAEqMidVal">0dB</span>
+                </div>
+                <div class="eq-knob-unit">
+                  <label>LOW</label>
+                  <input type="range" id="deckAEqLow" min="-24" max="12" step="0.5" value="0" class="apple-eq-slider" />
+                  <span id="deckAEqLowVal">0dB</span>
+                </div>
+              </div>
+
+              <div class="deck-pitch-cluster">
+                <div class="pitch-slider-unit">
+                  <label>TEMPO</label>
+                  <input type="range" id="deckAPitch" min="0.8" max="1.2" step="0.005" value="1.0" class="apple-pitch-fader" />
+                  <span id="deckABpmDisplay" class="deck-bpm-readout tabular">128.0 BPM</span>
+                </div>
+                <div class="deck-volume-fader-unit">
+                  <label>CH 1</label>
+                  <input type="range" id="deckAVolume" min="0" max="1" step="0.01" value="0.9" class="apple-channel-fader" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Beat Loops Deck A -->
+            <div class="deck-loop-row">
+              <span class="loop-label">LOOP:</span>
+              <button class="btn-loop-pad" data-deck="a" data-beats="0.5">1/2</button>
+              <button class="btn-loop-pad active-loop" data-deck="a" data-beats="1">1</button>
+              <button class="btn-loop-pad" data-deck="a" data-beats="2">2</button>
+              <button class="btn-loop-pad" data-deck="a" data-beats="4">4</button>
+            </div>
+          </div>
+
+          <!-- ==================== MIXER CENTRAL & FX PADS ==================== -->
+          <div class="dj-center-mixer glass-panel">
+            <div class="mixer-master-head">
+              <label><i class="fa-solid fa-volume-high"></i> MASTER OUT</label>
+              <input type="range" id="djMasterGain" min="0" max="1.2" step="0.01" value="1.0" class="apple-volume-range" />
+            </div>
+
+            <!-- 8 Performance Sound FX Pads -->
+            <div class="dj-performance-pads-section">
+              <div class="fx-section-title">
+                <i class="fa-solid fa-cubes-stacked"></i> PERFORMANCE PADS (SFX)
+              </div>
+              <div class="dj-pads-grid">
+                <button class="dj-fx-pad pad-red" id="padFxHorn" data-fx="horn" title="Bocina Air Horn DJ">
+                  <i class="fa-solid fa-bullhorn"></i>
+                  <span>AIR HORN</span>
+                </button>
+                <button class="dj-fx-pad pad-orange" id="padFxDrop" data-fx="drop" title="Bajo Sub Bass Drop">
+                  <i class="fa-solid fa-bomb"></i>
+                  <span>BASS DROP</span>
+                </button>
+                <button class="dj-fx-pad pad-yellow" id="padFxSiren" data-fx="siren" title="Sirena de Fiesta Sweep">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  <span>SIREN</span>
+                </button>
+                <button class="dj-fx-pad pad-green" id="padFxLaser" data-fx="laser" title="Efecto Láser Zap">
+                  <i class="fa-solid fa-bolt"></i>
+                  <span>LASER</span>
+                </button>
+                <button class="dj-fx-pad pad-blue" id="padFxKick" data-fx="kick" title="Bombo 4x">
+                  <i class="fa-solid fa-drum"></i>
+                  <span>KICK 4X</span>
+                </button>
+                <button class="dj-fx-pad pad-purple" id="padFxClap" data-fx="clap" title="Aplauso Clap Trap">
+                  <i class="fa-solid fa-hands-clapping"></i>
+                  <span>CLAP</span>
+                </button>
+                <button class="dj-fx-pad pad-cyan" id="padFxSweep" data-fx="sweep" title="Riser de Ruido Blanco">
+                  <i class="fa-solid fa-wind"></i>
+                  <span>SWEEP</span>
+                </button>
+                <button class="dj-fx-pad pad-pink" id="padFxBrake" data-fx="brake" title="Parada de Vinilo Frenado">
+                  <i class="fa-solid fa-stop"></i>
+                  <span>BRAKE</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Master Crossfader Horizontal -->
+            <div class="dj-crossfader-container">
+              <div class="crossfader-labels-row">
+                <span class="xfader-deck-a">DECK A</span>
+                <span class="xfader-mid">CROSSFADER</span>
+                <span class="xfader-deck-b">DECK B</span>
+              </div>
+              <div class="crossfader-slider-wrap">
+                <input type="range" id="djCrossfaderSlider" min="0" max="1" step="0.005" value="0.5" class="apple-crossfader-range" />
+              </div>
+              <div class="crossfader-curve-row">
+                <button id="btnXFadeCutA" class="btn-pill-micro">100% A</button>
+                <button id="btnXFadeCenter" class="btn-pill-micro">Centro</button>
+                <button id="btnXFadeCutB" class="btn-pill-micro">100% B</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== DECK B (DERECHA - VERDE) ==================== -->
+          <div class="dj-deck-card deck-b glass-panel">
+            <div class="deck-header">
+              <div class="deck-badge badge-b">DECK B</div>
+              <select id="djDeckBTrackSelect" class="apple-clean-dropdown dropdown-sm dj-track-select">
+                <option value="">-- Cargar Canción en Deck B --</option>
+              </select>
+            </div>
+
+            <div class="deck-meta">
+              <span id="djDeckBTitle" class="deck-track-title">Sin pista cargada</span>
+              <span id="djDeckBArtist" class="deck-track-artist">Selecciona una canción arriba</span>
+            </div>
+
+            <!-- Plato Giratorio / Turntable Deck B -->
+            <div class="turntable-wrapper" id="deckBTurntableWrap">
+              <div class="turntable-jog-wheel" id="deckBJogWheel">
+                <div class="jog-outer-ring ring-green"></div>
+                <div class="jog-vinyl-grooves">
+                  <div class="jog-center-label">
+                    <img id="deckBCover" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=120" alt="Deck B Cover" />
+                    <div class="jog-spindle"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="jog-scratch-hint"><i class="fa-solid fa-hand-pointer"></i> Arrastra el vinilo para scratchear</div>
+            </div>
+
+            <!-- VU Meter Deck B + Controles de Transporte -->
+            <div class="deck-meter-and-controls">
+              <div class="dj-vu-meter" id="deckBVuMeter">
+                <div class="vu-leds" id="deckBLeds">
+                  <span class="led-dot g"></span><span class="led-dot g"></span>
+                  <span class="led-dot g"></span><span class="led-dot y"></span>
+                  <span class="led-dot r"></span>
+                </div>
+              </div>
+
+              <div class="deck-transport-row">
+                <button id="btnDeckBCue" class="btn-dj-round btn-cue" title="CUE: Regresar al punto 0">CUE</button>
+                <button id="btnDeckBPlay" class="btn-dj-round btn-play" title="Play / Pause Deck B">
+                  <i class="fa-solid fa-play"></i>
+                </button>
+                <button id="btnDeckBSync" class="btn-dj-round btn-sync" title="Igualar BPM al Deck A">SYNC</button>
+              </div>
+            </div>
+
+            <!-- EQ 3 Bandas & Pitch Fader Deck B -->
+            <div class="deck-controls-lower">
+              <div class="deck-eq-cluster">
+                <div class="eq-knob-unit">
+                  <label>HIGH</label>
+                  <input type="range" id="deckBEqHigh" min="-24" max="12" step="0.5" value="0" class="apple-eq-slider" />
+                  <span id="deckBEqHighVal">0dB</span>
+                </div>
+                <div class="eq-knob-unit">
+                  <label>MID</label>
+                  <input type="range" id="deckBEqMid" min="-24" max="12" step="0.5" value="0" class="apple-eq-slider" />
+                  <span id="deckBEqMidVal">0dB</span>
+                </div>
+                <div class="eq-knob-unit">
+                  <label>LOW</label>
+                  <input type="range" id="deckBEqLow" min="-24" max="12" step="0.5" value="0" class="apple-eq-slider" />
+                  <span id="deckBEqLowVal">0dB</span>
+                </div>
+              </div>
+
+              <div class="deck-pitch-cluster">
+                <div class="pitch-slider-unit">
+                  <label>TEMPO</label>
+                  <input type="range" id="deckBPitch" min="0.8" max="1.2" step="0.005" value="1.0" class="apple-pitch-fader" />
+                  <span id="deckBBpmDisplay" class="deck-bpm-readout tabular">128.0 BPM</span>
+                </div>
+                <div class="deck-volume-fader-unit">
+                  <label>CH 2</label>
+                  <input type="range" id="deckBVolume" min="0" max="1" step="0.01" value="0.9" class="apple-channel-fader" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Beat Loops Deck B -->
+            <div class="deck-loop-row">
+              <span class="loop-label">LOOP:</span>
+              <button class="btn-loop-pad" data-deck="b" data-beats="0.5">1/2</button>
+              <button class="btn-loop-pad active-loop" data-deck="b" data-beats="1">1</button>
+              <button class="btn-loop-pad" data-deck="b" data-beats="2">2</button>
+              <button class="btn-loop-pad" data-deck="b" data-beats="4">4</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Elementos de Audio Dedicados para Deck A y Deck B -->
+        <audio id="deckAAudioElement" preload="metadata" crossorigin="anonymous"></audio>
+        <audio id="deckBAudioElement" preload="metadata" crossorigin="anonymous"></audio>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 3: MI BIBLIOTECA DE MÚSICA LOCAL & PLAYLISTS                   -->
+    <!-- ===================================================================== -->
+    <section id="viewLibrary" class="app-view hidden-view">
+      <div class="library-header-card glass-panel">
+        <div class="library-header-info">
+          <div class="apple-tag-badge"><i class="fa-solid fa-folder-music"></i> Tu Música Local</div>
+          <h2 class="library-title">Mi Biblioteca</h2>
+          <p class="library-subtitle">Canciones descargadas en tu almacenamiento local. Listas para reproducir sin conexión a internet.</p>
+          <div class="library-stats-row">
+            <div class="stat-bubble"><i class="fa-solid fa-music"></i> <strong id="libStatTotalTracks" class="tabular">0</strong> canciones</div>
+            <div class="stat-bubble"><i class="fa-solid fa-layer-group"></i> <strong id="libStatPlaylists" class="tabular">0</strong> carpetas</div>
+            <div class="stat-bubble"><i class="fa-solid fa-microphone"></i> <strong id="libStatArtists" class="tabular">0</strong> cantantes</div>
+            <div class="stat-bubble"><i class="fa-solid fa-hard-drive"></i> <span id="libStatStorage">0 MB</span></div>
+          </div>
+        </div>
+        <div class="library-header-actions">
+          <button id="btnSaveAllOffline" class="btn-pill-action" title="Guardar canciones de la biblioteca en la memoria de este celular o PC para reproducir 100% sin internet">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>Guardar en Celular (Offline)</span>
+          </button>
+          <button id="btnRefreshLibrary" class="btn-pill-secondary" title="Volver a escanear carpeta">
+            <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+          </button>
+          <button id="btnOpenFolderFromLib" class="btn-pill-primary" title="Abrir carpeta de música en Windows">
+            <i class="fa-regular fa-folder-open"></i> Explorador Windows
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Búsqueda y Filtro de Biblioteca -->
+      <div class="library-filter-toolbar glass-panel">
+        <div class="search-input-wrap">
+          <i class="fa-solid fa-magnifying-glass search-ico"></i>
+          <input type="text" id="libSearchInput" placeholder="Buscar por canción, artista o carpeta..." autocomplete="off" />
+          <button id="btnClearLibSearch" class="btn-clean-x hidden"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Chips de Filtrado por Carpeta / Playlist -->
+        <div class="lib-playlist-chips-carousel" id="libPlaylistChips">
+          <button class="lib-chip active" data-folder="all">Todas las Canciones</button>
+        </div>
+      </div>
+
+      <!-- Lista de Pistas de la Biblioteca -->
+      <div class="library-tracks-container glass-panel">
+        <div class="lib-table-header">
+          <span class="col-index">#</span>
+          <span class="col-title">Título</span>
+          <span class="col-artist">Artista</span>
+          <span class="col-album">Carpeta / Álbum</span>
+          <span class="col-duration"><i class="fa-regular fa-clock"></i></span>
+          <span class="col-actions">Acciones</span>
+        </div>
+        <div class="lib-tracks-rows" id="libTracksList">
+          <div class="lib-empty-notice">
+            <i class="fa-solid fa-folder-open"></i>
+            <p>Escaneando canciones descargadas...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 4: IA MOOD STUDIO & RECOMENDACIONES                             -->
+    <!-- ===================================================================== -->
+    <section id="viewMood" class="app-view hidden-view">
+      <div class="mood-hero-banner glass-panel">
+        <div class="apple-tag-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> Inteligencia Musical</div>
+        <h2 class="hero-title">Smart Mood <span class="gradient-text">Studio</span></h2>
+        <p class="hero-subtitle">Secuencias armoniosas de 5 a 7 canciones según tu vibra actual, con modulación suave hacia el siguiente estado de ánimo y descubrimiento online.</p>
+
+        <!-- Selector de Moods con Estilo Apple Liquid Glass -->
+        <div class="mood-pills-selector" id="moodPillsContainer">
+          <button class="mood-pill active" data-mood="workout">
+            <span class="mood-emoji">⚡</span>
+            <div class="mood-text">
+              <strong>Workout / Alta Energía</strong>
+              <small>Trap, Reggaetón, Drill, Rock</small>
+            </div>
+          </button>
+          <button class="mood-pill" data-mood="chill">
+            <span class="mood-emoji">☕</span>
+            <div class="mood-text">
+              <strong>Chill / Relax</strong>
+              <small>Lo-Fi, Acústico, R&B, Suave</small>
+            </div>
+          </button>
+          <button class="mood-pill" data-mood="night">
+            <span class="mood-emoji">🌙</span>
+            <div class="mood-text">
+              <strong>Noche / Melancólico</strong>
+              <small>Baladas, Introspectivo, Lluvia</small>
+            </div>
+          </button>
+          <button class="mood-pill" data-mood="focus">
+            <span class="mood-emoji">💻</span>
+            <div class="mood-text">
+              <strong>Focus / Concentración</strong>
+              <small>Instrumental, Synthwave, Ambient</small>
+            </div>
+          </button>
+          <button class="mood-pill" data-mood="party">
+            <span class="mood-emoji">🎉</span>
+            <div class="mood-text">
+              <strong>Fiesta / Ritmo Urbano</strong>
+              <small>Perreo, Dance, Afrobeat, Pop</small>
+            </div>
+          </button>
+        </div>
+
+        <div class="mood-actions-row">
+          <button id="btnGenerateMoodSequence" class="btn-pill-primary btn-lg">
+            <i class="fa-solid fa-play"></i>
+            <span>Generar Secuencia Armónica (5-7 Canciones)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Contenedor de la Secuencia Generada -->
+      <div class="mood-sequence-section glass-panel">
+        <div class="mood-seq-header">
+          <div class="mood-seq-title-lead">
+            <i class="fa-solid fa-bars-staggered"></i>
+            <span id="moodSeqTitle">Secuencia Activa</span>
+            <span id="moodSeqBadge" class="badge-status-synced">Armónica</span>
+          </div>
+          <button id="btnPlayAllMoodSeq" class="btn-pill-primary btn-sm">
+            <i class="fa-solid fa-play"></i> Reproducir Secuencia
+          </button>
+        </div>
+
+        <div class="mood-seq-tracks-grid" id="moodSeqGrid">
+          <!-- Inyectado por JavaScript -->
+        </div>
+      </div>
+
+      <!-- Sección Descubrimiento Musical desde Internet -->
+      <div class="mood-discover-section glass-panel">
+        <div class="discover-lead-bar">
+          <div class="discover-lead-titles">
+            <h3><i class="fa-solid fa-compass"></i> Descubrir Nuevas Canciones en Internet</h3>
+            <p>Pide recomendaciones afines a tu estilo o ingresa un prompt musical libre.</p>
+          </div>
+        </div>
+
+        <div class="discover-search-bar">
+          <input type="text" id="discoverPromptInput" placeholder="Ej: Canciones parecidas a Trueno o The Weeknd con ritmo nocturno..." />
+          <button id="btnTriggerDiscover" class="btn-pill-primary">
+            <i class="fa-solid fa-bolt"></i> Descubrir con IA
+          </button>
+        </div>
+
+        <div class="discover-results-grid" id="discoverResultsGrid">
+          <!-- Tarjetas de canciones encontradas en internet listas para reproducir o descargar en 1-click -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 5: ESTUDIO DE AUDIO (RECORTE, MASHUP Y STEMS)                   -->
+    <!-- ===================================================================== -->
+    <section id="viewStudio" class="app-view hidden-view">
+      <div class="studio-header-card glass-panel">
+        <div class="apple-tag-badge"><i class="fa-solid fa-sliders"></i> Arachiz Audio Lab</div>
+        <h2 class="hero-title">Estudio de Audio <span class="gradient-text">& Stems</span></h2>
+        <p class="hero-subtitle">Edita canciones fácilmente: recorta fragmentos, une dos canciones con crossfade logarítmico o separa la voz del beat instrumental.</p>
+      </div>
+
+      <div class="studio-tools-grid">
+        <!-- Tarjeta 1: Recortador Rápido (Trim) -->
+        <div class="studio-tool-card glass-panel">
+          <div class="tool-card-head">
+            <div class="tool-icon-box tool-blue"><i class="fa-solid fa-scissors"></i></div>
+            <div class="tool-head-text">
+              <h3>Recortar Audio (Trim)</h3>
+              <p>Elige una canción y define el punto de inicio y fin.</p>
+            </div>
+          </div>
+
+          <div class="tool-body">
+            <label class="control-label">Seleccionar Canción:</label>
+            <select id="studioTrimTrackSelect" class="apple-clean-dropdown">
+              <!-- Opciones de pistas de la biblioteca -->
+            </select>
+
+            <div class="trim-inputs-row">
+              <div class="trim-input-col">
+                <label>Segundo Inicio:</label>
+                <input type="number" id="trimStartInput" value="0" min="0" step="1" />
+              </div>
+              <div class="trim-input-col">
+                <label>Segundo Fin:</label>
+                <input type="number" id="trimEndInput" value="30" min="1" step="1" />
+              </div>
+            </div>
+
+            <button id="btnExecuteTrim" class="btn-pill-primary btn-block">
+              <i class="fa-solid fa-scissors"></i> Recortar y Guardar MP3
+            </button>
+            <p id="trimStatusFeedback" class="studio-feedback-text hidden"></p>
+          </div>
+        </div>
+
+        <!-- Tarjeta 2: Mashup & Unión con Crossfade -->
+        <div class="studio-tool-card glass-panel">
+          <div class="tool-card-head">
+            <div class="tool-icon-box tool-green"><i class="fa-solid fa-arrows-split-up-and-left"></i></div>
+            <div class="tool-head-text">
+              <h3>Unir Canciones (Mashup)</h3>
+              <p>Combina 2 canciones con una transición de crossfade.</p>
+            </div>
+          </div>
+
+          <div class="tool-body">
+            <label class="control-label">Primera Canción:</label>
+            <select id="studioMergeTrack1" class="apple-clean-dropdown"></select>
+
+            <label class="control-label">Segunda Canción:</label>
+            <select id="studioMergeTrack2" class="apple-clean-dropdown"></select>
+
+            <label class="control-label">Duración del Crossfade:</label>
+            <select id="studioMergeCrossfade" class="apple-clean-dropdown">
+              <option value="2">2 segundos</option>
+              <option value="4" selected>4 segundos (Recomendado)</option>
+              <option value="6">6 segundos</option>
+              <option value="8">8 segundos</option>
+            </select>
+
+            <button id="btnExecuteMerge" class="btn-pill-primary btn-block">
+              <i class="fa-solid fa-link"></i> Generar Mashup MP3
+            </button>
+            <p id="mergeStatusFeedback" class="studio-feedback-text hidden"></p>
+          </div>
+        </div>
+
+        <!-- Tarjeta 3: Separación de Stems (Voz vs Beat) -->
+        <div class="studio-tool-card glass-panel">
+          <div class="tool-card-head">
+            <div class="tool-icon-box tool-red"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="tool-head-text">
+              <h3>Separar Stems (Voz y Beat)</h3>
+              <p>Aísla la pista en Solo Voz (Acapella) o Solo Beat.</p>
+            </div>
+          </div>
+
+          <div class="tool-body">
+            <label class="control-label">Seleccionar Canción:</label>
+            <select id="studioStemsTrackSelect" class="apple-clean-dropdown"></select>
+
+            <div class="stems-buttons-stack">
+              <button id="btnExtractBeat" class="btn-pill-secondary btn-block">
+                <i class="fa-solid fa-drum"></i> Exportar Solo Beat (Instrumental)
+              </button>
+              <button id="btnExtractVocal" class="btn-pill-secondary btn-block">
+                <i class="fa-solid fa-microphone"></i> Exportar Solo Voz (Acapella)
+              </button>
+              <button id="btnExtractBoth" class="btn-pill-primary btn-block">
+                <i class="fa-solid fa-bolt"></i> Separar Ambos Componentes
+              </button>
+            </div>
+            <p id="stemsStatusFeedback" class="studio-feedback-text hidden"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 6: DESCARGADOR DE PLAYLISTS Y VIDEO OFICIAL                     -->
+    <!-- ===================================================================== -->
+    <main id="viewDownloader" class="app-view hidden-view">
+      <div class="downloader-top-bar">
+        <button id="btnBackToDashboard" class="btn-subtle-back" title="Volver al inicio">
+          <i class="fa-solid fa-chevron-left"></i>
+          <span>Volver al Inicio 3D</span>
+        </button>
+        <div class="downloader-tagline">
+          <span>Área de Descarga Ilimitada</span>
+        </div>
+      </div>
+
+      <!-- Hero Entrada 1-Click -->
+      <section class="hero-section">
+        <div class="hero-text-wrap">
+          <h2 class="hero-title">Tu música y videos. <span class="gradient-text">Pega y descarga.</span></h2>
+          <p class="hero-subtitle">Pega el enlace de cualquier playlist de Spotify o YouTube. Todas las canciones se listan juntas con carátulas oficiales y selección por secciones.</p>
+        </div>
+
+        <div class="input-card-hero glass-panel">
+          <div class="search-lead-icon"><i class="fa-solid fa-link"></i></div>
+          <input 
+            type="text" 
+            id="urlInput" 
+            placeholder="Pega el enlace de tu Playlist de Spotify o YouTube y presiona Enter..." 
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="input-actions-group">
+            <button id="btnPaste" class="btn-circle-subtle" title="Pegar enlace copiado"><i class="fa-regular fa-clipboard"></i></button>
+            <button id="btnClear" class="btn-circle-subtle" title="Borrar"><i class="fa-solid fa-xmark"></i></button>
+            <button id="btnAnalyze" class="btn-hero-cta" title="Cargar canciones">
+              <i class="fa-solid fa-bolt"></i>
+              <span>Cargar Playlist</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Selector de formato y calidad -->
+        <div class="compact-control-bar glass-panel">
+          <div class="control-item">
+            <label for="formatSelect" class="control-label">
+              <i class="fa-solid fa-sliders"></i>
+              <span>Formato:</span>
+            </label>
+            <select id="formatSelect" class="apple-clean-dropdown">
+              <option value="mp3" selected>🎵 MP3 Audio (Música)</option>
+              <option value="video_official">🎬 Video Oficial YouTube HD</option>
+              <option value="video_standard">📹 Video Estándar (MP4)</option>
+              <option value="m4a">🪶 M4A / AAC (Ultra Ahorro)</option>
+            </select>
+          </div>
+
+          <div class="control-item" id="qualityControlWrap">
+            <label for="qualitySelect" class="control-label">
+              <i class="fa-solid fa-gauge-high"></i>
+              <span>Calidad:</span>
+            </label>
+            <select id="qualitySelect" class="apple-clean-dropdown"></select>
+          </div>
+
+          <div class="folder-hint-pill" id="btnChangeFolderInline" title="Clic para cambiar carpeta de guardado">
+            <i class="fa-solid fa-folder-closed"></i>
+            <span id="currentFolderDisplay" class="tabular">Cargando carpeta...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel de Carga / Spinner con efecto Liquid -->
+      <div id="loader" class="loader-banner glass-panel hidden">
+        <div class="apple-spin-indicator"></div>
+        <div class="loader-text-group">
+          <p id="loaderText" class="loader-primary-text">Analizando canciones y carátulas...</p>
+          <span id="loaderSubtext" class="loader-secondary-text">Sincronizando metadatos en HD...</span>
+        </div>
+      </div>
+
+      <!-- Sección de Resultados: Lista de Canciones & Descarga 1-Click -->
+      <section id="resultsSection" class="results-container hidden">
+        <div class="playlist-header-card glass-panel" id="playlistSummaryCard">
+          <div class="cover-wrapper">
+            <img id="playlistCover" src="" alt="Cover" class="playlist-cover-img" />
+            <span class="cover-badge" id="playlistTypeBadge">SPOTIFY</span>
+          </div>
+
+          <div class="playlist-summary-info">
+            <input type="text" id="playlistTitleInput" class="playlist-name-input" value="Mi Playlist" title="Clic para renombrar carpeta" />
+            
+            <div class="stats-pills-row">
+              <div class="stat-bubble">
+                <i class="fa-solid fa-music"></i>
+                <strong id="trackCount" class="tabular">0</strong> canciones
+              </div>
+              <div class="stat-bubble">
+                <i class="fa-regular fa-clock"></i>
+                <span id="totalDurationText" class="tabular">--:--</span>
+              </div>
+              <div class="stat-bubble">
+                <i class="fa-solid fa-database"></i>
+                <span id="estimatedSizeText" class="tabular">-- MB</span>
+              </div>
+              <div class="stat-bubble format-indicator-bubble" id="activeFormatIndicator">
+                <i class="fa-solid fa-music"></i>
+                <span id="activeFormatText">MP3 Audio</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="main-download-cta">
+            <button id="btnDownloadAll" class="btn-download-hero">
+              <i class="fa-solid fa-circle-arrow-down"></i>
+              <span id="btnDownloadAllText">Descargar Todas las Canciones</span>
+            </button>
+            <button id="btnOpenExportModal" class="btn-subtle-pill" title="Exportar a TXT, CSV o M3U">
+              <i class="fa-solid fa-arrow-up-from-bracket"></i> Exportar
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtro por Cantantes -->
+        <div id="artistsFilterSection" class="artists-filter-panel glass-panel hidden">
+          <div class="artists-filter-header">
+            <div class="artists-header-lead">
+              <i class="fa-solid fa-microphone-lines"></i>
+              <span>Filtrar por Cantante / Artista:</span>
+            </div>
+            <div class="artists-header-actions">
+              <span id="artistsTotalCount" class="artists-counter tabular">0 cantantes</span>
+              <button id="btnClearArtistFilter" class="btn-clean-x hidden" title="Mostrar todos los cantantes">
+                <i class="fa-solid fa-xmark"></i> Ver Todos
+              </button>
+            </div>
+          </div>
+          <div id="artistsChipList" class="artists-chips-carousel"></div>
+        </div>
+
+        <!-- Progreso Global -->
+        <div id="globalProgressCard" class="download-progress-card glass-panel hidden">
+          <div class="progress-info-line">
+            <span id="globalStatusText" class="progress-status-label">Descargando...</span>
+            <span id="globalPercentText" class="progress-percent-label tabular">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div id="globalProgressBar" class="progress-bar-fill" style="width: 0%;"></div>
+          </div>
+          <div class="progress-stats-line">
+            <span id="progressOkCount" class="stat-ok tabular">✓ 0 completadas</span>
+            <span id="progressErrCount" class="stat-err tabular"></span>
+          </div>
+        </div>
+
+        <!-- Barra de Filtro en Vivo y Selección por Secciones -->
+        <div class="filter-toolbar glass-panel">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass search-ico"></i>
+            <input type="text" id="trackSearchInput" placeholder="Buscar en la lista completa por canción o artista..." autocomplete="off" />
+            <button id="btnClearSearch" class="btn-clean-x hidden" title="Limpiar"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+
+          <div class="toolbar-actions-row">
+            <label class="apple-check-wrapper" title="Seleccionar o deseleccionar todas las canciones visibles">
+              <input type="checkbox" id="selectAllCheckbox" checked />
+              <span class="custom-checkmark"></span>
+              <span>Seleccionadas (<span id="selectedCount" class="tabular">0</span>)</span>
+            </label>
+
+            <div class="quick-batch-buttons">
+              <span class="batch-hint-label">Secciones:</span>
+              <button class="btn-pill-micro" id="btnSelectAllBatch" title="Seleccionar toda la lista">Todas</button>
+              <button class="btn-pill-micro" id="btnSelect50" title="Seleccionar las primeras 50">1-50</button>
+              <button class="btn-pill-micro" id="btnSelect100" title="Seleccionar las primeras 100">1-100</button>
+              <button class="btn-pill-micro" id="btnSelect250" title="Seleccionar las primeras 250">1-250</button>
+              <button class="btn-pill-micro" id="btnSelectInvert" title="Invertir selección actual">Invertir</button>
+              <button class="btn-pill-micro" id="btnSelectNone" title="Deseleccionar todas">Ninguna</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="list-status-banner">
+          <div class="list-status-left">
+            <i class="fa-solid fa-layer-group"></i>
+            <span id="listTotalInfoText" class="page-info-text tabular">Mostrando todas las canciones en una sola lista</span>
+          </div>
+          <div class="list-status-right">
+            <span class="badge-single-list">Lista Completa sin Paginación</span>
+          </div>
+        </div>
+
+        <div id="tracksList" class="tracks-list-flow"></div>
+      </section>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- VISTA 7: CHECKLIST & ROADMAP INTERACTIVO                              -->
+    <!-- ===================================================================== -->
+    <section id="viewChecklist" class="app-view hidden-view">
+      <div class="checklist-hero-card glass-panel">
+        <div class="apple-tag-badge"><i class="fa-solid fa-list-check"></i> Control & Calidad</div>
+        <h2 class="hero-title">Checklist & <span class="gradient-text">Roadmap de Arachiz Music</span></h2>
+        <p class="hero-subtitle">Verifica cada una de las funcionalidades pedidas, marca las pruebas realizadas y agrega nuevas ideas que se guardan automáticamente.</p>
+
+        <!-- Barra de Progreso Global del Checklist -->
+        <div class="checklist-progress-wrap">
+          <div class="checklist-stat-line">
+            <span id="checklistCounterLabel">Cargando tareas...</span>
+            <strong id="checklistPercentText" class="tabular">100%</strong>
+          </div>
+          <div class="checklist-bar-track">
+            <div id="checklistProgressBar" class="checklist-bar-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulario para Agregar Nueva Idea o Requerimiento -->
+      <div class="checklist-add-card glass-panel">
+        <div class="add-card-header">
+          <i class="fa-solid fa-plus-circle"></i>
+          <span>Añadir Nueva Idea o Función al Checklist:</span>
+        </div>
+        <div class="add-card-form">
+          <input type="text" id="newChecklistTitle" placeholder="Escribe tu idea (ej: Integrar ecualizador gráfico de 10 bandas)..." />
+          <input type="text" id="newChecklistCategory" placeholder="Categoría (opcional)" value="✨ Mis Nuevas Ideas" />
+          <button id="btnAddChecklistItem" class="btn-pill-primary">
+            <i class="fa-solid fa-plus"></i> Añadir al Checklist
+          </button>
+        </div>
+      </div>
+
+      <!-- Contenedor de Items del Checklist Agrupados -->
+      <div class="checklist-items-container glass-panel" id="checklistItemsList">
+        <!-- Inyectado por JavaScript -->
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- REPRODUCTOR FLOTANTE INFERIOR PERSISTENTE (APPLE MUSIC STYLE)         -->
+    <!-- ===================================================================== -->
+    <div id="persistentPlayerBar" class="persistent-player-bar glass-panel">
+      <!-- Columna 1: Carátula e Información de la Canción -->
+      <div class="pbar-track-col" id="pbarTrackInfoBlock" role="button" title="Clic para expandir a pantalla completa">
+        <img id="pbarCover" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" alt="Cover" class="pbar-cover-img" />
+        <div class="pbar-text-group">
+          <span id="pbarTitle" class="pbar-title">Arachiz Music</span>
+          <span id="pbarArtist" class="pbar-artist">Elige una canción para reproducir</span>
+        </div>
+      </div>
+
+      <!-- Columna 2: Controles Centrales & Timeline -->
+      <div class="pbar-controls-col">
+        <div class="pbar-buttons-row">
+          <button id="pbarBtnShuffle" class="pbar-btn-subtle" title="Smart Shuffle"><i class="fa-solid fa-shuffle"></i></button>
+          <button id="pbarBtnPrev" class="pbar-btn-step" title="Anterior"><i class="fa-solid fa-backward-step"></i></button>
+          <button id="pbarBtnPlayPause" class="pbar-btn-play" title="Play / Pausa"><i class="fa-solid fa-play"></i></button>
+          <button id="pbarBtnNext" class="pbar-btn-step" title="Siguiente"><i class="fa-solid fa-forward-step"></i></button>
+          <button id="pbarBtnRepeat" class="pbar-btn-subtle" title="Repetir"><i class="fa-solid fa-repeat"></i></button>
+        </div>
+
+        <div class="pbar-progress-row">
+          <span id="pbarCurTime" class="pbar-time tabular">0:00</span>
+          <div class="pbar-slider-track" id="pbarSliderTrack">
+            <div id="pbarSliderFill" class="pbar-slider-fill" style="width: 0%;"></div>
+          </div>
+          <span id="pbarTotalTime" class="pbar-time tabular">0:00</span>
+        </div>
+      </div>
+
+      <!-- Columna 3: Opciones Rápidas (Letras, Crossfade, Volumen, Expandir) -->
+      <div class="pbar-actions-col">
+        <span class="pbar-badge-crossfade" id="pbarCrossfadeBadge" title="Crossfade Activo">X-Fade 4s</span>
+        <button id="pbarBtnLyrics" class="pbar-action-icon" title="Ver Letras Sincronizadas"><i class="fa-solid fa-quote-left"></i></button>
+        <div class="pbar-volume-box">
+          <i class="fa-solid fa-volume-high" id="pbarVolIcon"></i>
+          <input type="range" id="pbarVolumeSlider" min="0" max="1" step="0.01" value="0.9" class="apple-volume-mini" />
+        </div>
+        <button id="pbarBtnExpand" class="pbar-action-icon" title="Expandir Reproductor"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
+      </div>
+
+      <!-- Elemento de Audio Dual para Crossfade Suave -->
+      <audio id="primaryAudioElement" preload="metadata"></audio>
+      <audio id="secondaryAudioElement" preload="metadata"></audio>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODALES: CONEXIÓN MÓVIL (QR/IP), AJUSTES & EXPORTAR                   -->
+    <!-- ===================================================================== -->
+
+    <!-- Modal: Conexión Celular (Samsung / iPhone) vía Wi-Fi -->
+    <div id="mobileModal" class="modal-backdrop hidden">
+      <div class="apple-modal-box glass-panel modal-mobile-guide">
+        <div class="modal-top">
+          <h3><i class="fa-solid fa-mobile-screen-button"></i> Conectar tu Celular</h3>
+          <button id="btnCloseMobileModal" class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="modal-body mobile-guide-body">
+          <div class="mobile-qr-box">
+            <div class="qr-canvas-wrap">
+              <canvas id="qrCanvas" width="180" height="180"></canvas>
+            </div>
+            <div class="mobile-url-box">
+              <label>Abre este enlace en tu teléfono (Misma red Wi-Fi):</label>
+              <div class="url-copy-row">
+                <input type="text" id="mobileLanUrlInput" readonly value="http://127.0.0.1:5555" />
+                <button id="btnCopyMobileUrl" class="btn-pill-primary">Copiar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mobile-steps-list">
+            <div class="mobile-step-item">
+              <span class="step-num">1</span>
+              <p>Conecta tu <strong>iPhone</strong> o <strong>Samsung/Android</strong> a la misma red Wi-Fi de tu computadora.</p>
+            </div>
+            <div class="mobile-step-item">
+              <span class="step-num">2</span>
+              <p>Abre <strong>Safari</strong> (en iPhone) o <strong>Chrome</strong> (en Android) e ingresa la dirección indicada arriba.</p>
+            </div>
+            <div class="mobile-step-item">
+              <span class="step-num">3</span>
+              <p>Toca en <strong>"Compartir / Opciones"</strong> y selecciona <strong>"Agregar a la pantalla de inicio"</strong> para usar Arachiz Music como aplicación nativa a pantalla completa y sin conexión.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Ajustes Apple Minimalista -->
+    <div id="settingsModal" class="modal-backdrop hidden">
+      <div class="apple-modal-box glass-panel modal-minimal">
+        <div class="modal-top">
+          <h3><i class="fa-solid fa-sliders"></i> Ajustes</h3>
+          <button id="btnCloseSettingsModal" class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="modal-body minimal-settings-body">
+          <!-- Tarjeta 1: Carpeta -->
+          <div class="setting-card-mini">
+            <div class="setting-card-header">
+              <i class="fa-solid fa-folder-open"></i>
+              <strong>Carpeta de Descargas & Biblioteca</strong>
+            </div>
+            <div class="input-inline">
+              <input type="text" id="folderPathInput" placeholder="C:\Users\...\Downloads\PelotaMp" spellcheck="false" />
+              <button id="btnConfirmFolder" class="btn-pill-primary">Guardar</button>
+            </div>
+          </div>
+
+          <!-- Tarjeta 2: Spotify API Opcional -->
+          <div class="setting-card-mini">
+            <div class="setting-card-header">
+              <div class="header-with-badge">
+                <i class="fa-brands fa-spotify"></i>
+                <strong>Spotify API</strong>
+              </div>
+              <span id="spotifyStatusTag" class="status-badge-offline">Opcional</span>
+            </div>
+            <p class="setting-note">Solo si quieres cargar playlists con más de 100 canciones de Spotify.</p>
+            <div class="input-stack">
+              <input type="text" id="spotifyClientIdInput" placeholder="Client ID" spellcheck="false" />
+              <input type="password" id="spotifyClientSecretInput" placeholder="Client Secret" spellcheck="false" />
+            </div>
+            <div class="creds-buttons">
+              <button id="btnTestSpotify" class="btn-pill-secondary">Probar</button>
+              <button id="btnSaveSpotifyCreds" class="btn-pill-primary">Guardar</button>
+            </div>
+            <p id="spotifyTestFeedback" class="feedback-text hidden"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Exportar Lista -->
+    <div id="exportModal" class="modal-backdrop hidden">
+      <div class="apple-modal-box modal-sm glass-panel">
+        <div class="modal-top">
+          <h3><i class="fa-solid fa-arrow-up-from-bracket"></i> Exportar Lista</h3>
+          <button id="btnCloseExportModal" class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="export-grid">
+          <button class="export-card-btn" id="btnExportTxt">
+            <i class="fa-regular fa-file-lines"></i>
+            <strong>Archivo .TXT</strong>
+            <span>Lista simple de Artista - Canción</span>
+          </button>
+          <button class="export-card-btn" id="btnExportCsv">
+            <i class="fa-solid fa-table"></i>
+            <strong>Archivo .CSV</strong>
+            <span>Para Excel o Google Sheets</span>
+          </button>
+          <button class="export-card-btn" id="btnExportM3u">
+            <i class="fa-solid fa-list-check"></i>
+            <strong>Playlist .M3U8</strong>
+            <span>Compatible con VLC y reproductores</span>
+          </button>
+          <button class="export-card-btn" id="btnCopyClipboard">
+            <i class="fa-regular fa-clipboard"></i>
+            <strong>Copiar Portapapeles</strong>
+            <span>Copiar todo el texto al instante</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Gestión de Perfil de Dispositivo (iPhone, Samsung, PC) -->
+    <div id="profileModal" class="modal-backdrop hidden">
+      <div class="apple-modal-box glass-panel modal-sm">
+        <div class="modal-top">
+          <h3><i class="fa-solid fa-circle-user"></i> Perfiles de Dispositivo</h3>
+          <button id="btnCloseProfileModal" class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="modal-body profile-modal-body">
+          <p class="setting-note">Cada dispositivo (tu iPhone, Samsung o PC) mantiene sus propias listas de reproducción, favoritos y canciones sin que se borren.</p>
+          
+          <div class="profile-current-card glass-panel">
+            <i class="fa-solid fa-mobile-screen-button profile-big-ico"></i>
+            <div class="profile-current-info">
+              <span class="profile-label">Dispositivo Activo:</span>
+              <strong id="modalProfileActiveName" class="profile-name-text">PC Principal</strong>
+              <small id="modalProfileStats" class="profile-stats-sub">0 favoritos • 0 listas</small>
+            </div>
+          </div>
+
+          <div class="profile-list-section">
+            <label class="control-label">Cambiar a otro dispositivo / perfil:</label>
+            <div id="profilesListContainer" class="profiles-list-pills"></div>
+          </div>
+
+          <div class="profile-create-box">
+            <label class="control-label">Crear perfil para este celular / dispositivo:</label>
+            <div class="input-inline">
+              <input type="text" id="newProfileNameInput" placeholder="Ej: Mi iPhone 15, Samsung S23..." />
+              <button id="btnCreateProfile" class="btn-pill-primary">Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Cambiar Carátula o Video Oficial Manualmente -->
+    <div id="customMediaModal" class="modal-backdrop hidden">
+      <div class="apple-modal-box glass-panel modal-sm">
+        <div class="modal-top">
+          <h3><i class="fa-solid fa-pen-to-square"></i> Carátula & Video Oficial</h3>
+          <button id="btnCloseCustomMediaModal" class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="modal-body custom-media-body">
+          <p class="setting-note">Arachiz Music busca automáticamente carátulas y videos oficiales en HD. Si deseas usar una imagen o video específico para esta canción, ingrésalo aquí:</p>
+
+          <div class="media-input-group">
+            <label class="control-label"><i class="fa-solid fa-image"></i> URL de Carátula HD (JPG / PNG):</label>
+            <div class="input-inline">
+              <input type="text" id="customCoverUrlInput" placeholder="https://..." />
+              <button id="btnApplyCustomCover" class="btn-pill-primary">Aplicar</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button type="button" id="btnUploadCoverFile" class="btn-pill-micro" style="cursor:pointer;"><i class="fa-solid fa-file-arrow-up"></i> Elegir foto de mi PC / Celular</button>
+              <input type="file" id="customCoverFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;" />
+            </div>
+          </div>
+
+          <div class="media-input-group">
+            <label class="control-label"><i class="fa-brands fa-youtube"></i> Enlace de Video Oficial de YouTube:</label>
+            <div class="input-inline">
+              <input type="text" id="customVideoUrlInput" placeholder="https://www.youtube.com/watch?v=..." />
+              <button id="btnApplyCustomVideo" class="btn-pill-primary">Vincular</button>
+            </div>
+          </div>
+
+          <div class="media-preview-box" id="customMediaPreview">
+            <!-- Vista previa dinámica -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notificación Toast -->
+    <div id="toastNotification" class="apple-toast-pill glass-panel hidden">
+      <i class="fa-solid fa-circle-check toast-icon"></i>
+      <div class="toast-body">
+        <h4 id="toastTitle">¡Listo!</h4>
+        <p id="toastMessage">Operación realizada con éxito.</p>
+      </div>
+      <button id="btnToastOpen" class="btn-toast-link">Abrir</button>
+    </div>
+
+    <div id="toastError" class="apple-toast-pill toast-err glass-panel hidden">
+      <i class="fa-solid fa-circle-exclamation toast-icon"></i>
+      <div class="toast-body">
+        <h4 id="toastErrorTitle">Aviso</h4>
+        <p id="toastErrorMessage">Ha ocurrido un problema.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

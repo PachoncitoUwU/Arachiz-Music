@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Caches & Temporary
+.cache/
+backend/cache/
+*.log
+.tempmediaStorage/
+.system_generated/
+*.tmp
+
+# User-specific downloads (keep folders clean)
+*.mp3
+*.mp4
+*.m4a
+*.wav
+!frontend/favicon.svg

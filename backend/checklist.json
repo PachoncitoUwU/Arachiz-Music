@@ -1,0 +1,107 @@
+[
+  {
+    "id": "player_ui",
+    "category": "🎵 Reproductor & Apple Liquid Glass",
+    "title": "Diseño Apple Liquid Glass Puro (Sin morados IA, estética Apple transparente)",
+    "completed": true,
+    "detail": "Rejilla de 4px, esquinas redondeadas 21px, backdrop-filter blur de 28px y specular highlights."
+  },
+  {
+    "id": "player_theme",
+    "category": "🎵 Reproductor & Apple Liquid Glass",
+    "title": "Soporte Real para Modo Claro y Modo Oscuro",
+    "completed": true,
+    "detail": "Alternador de tema ultra-limpio guardado en preferencias locales."
+  },
+  {
+    "id": "player_crossfade",
+    "category": "🎵 Reproductor & Apple Liquid Glass",
+    "title": "Crossfade Dinámico y Transición Suave entre Canciones",
+    "completed": true,
+    "detail": "Fusión logarítmica sin silencios bruscos, configurable de 0s a 12s."
+  },
+  {
+    "id": "lyrics_synced",
+    "category": "🎤 Letras Sincronizadas (Karaoke)",
+    "title": "Letras Sincronizadas al Milisegundo (LRC en Vivo)",
+    "completed": true,
+    "detail": "Integración con LRCLIB pública, auto-scroll y resaltado cinemático de la línea activa."
+  },
+  {
+    "id": "lyrics_click_seek",
+    "category": "🎤 Letras Sincronizadas (Karaoke)",
+    "title": "Click-to-Seek en Letras",
+    "completed": true,
+    "detail": "Haz clic en cualquier verso de la letra para saltar instantáneamente a ese segundo de la canción."
+  },
+  {
+    "id": "lyrics_ai_fallback",
+    "category": "🎤 Letras Sincronizadas (Karaoke)",
+    "title": "Respaldo y Transcripción IA para Canciones sin Letra",
+    "completed": true,
+    "detail": "Detección de letras faltantes con opción de transcribir voz y guardar .lrc local."
+  },
+  {
+    "id": "library_scan",
+    "category": "📂 Mi Biblioteca & Streaming Local",
+    "title": "Escaneo Recursivo y Catálogo de Canciones Descargadas",
+    "completed": true,
+    "detail": "Detecta MP3, MP4, M4A con carátulas oficiales, duración y organización por carpetas."
+  },
+  {
+    "id": "library_range_streaming",
+    "category": "📂 Mi Biblioteca & Streaming Local",
+    "title": "Streaming con Soporte Range (HTTP 206) para Búsqueda Rápida",
+    "completed": true,
+    "detail": "Permite adelantar y retroceder en la barra de tiempo sin demoras."
+  },
+  {
+    "id": "mood_sequence",
+    "category": "🤖 IA Mood Studio & Recomendaciones",
+    "title": "Smart Mood Shuffle (Secuencias de 5-7 canciones)",
+    "completed": true,
+    "detail": "Secuencias por vibra (Workout, Chill, Noche, Focus, Fiesta) con modulación armónica suave."
+  },
+  {
+    "id": "mood_discover",
+    "category": "🤖 IA Mood Studio & Recomendaciones",
+    "title": "Descubrimiento de Canciones desde Internet con IA",
+    "completed": true,
+    "detail": "Búsqueda de temas afines en YouTube/Spotify para agregar a la cola o descargar en 1-click."
+  },
+  {
+    "id": "studio_trim",
+    "category": "🎛️ Estudio de Audio & Stems",
+    "title": "Editor y Recortador Rápido de Canciones (Trim)",
+    "completed": true,
+    "detail": "Selección de segundo inicial y final para crear timbres o fragmentos con FFmpeg."
+  },
+  {
+    "id": "studio_mashup",
+    "category": "🎛️ Estudio de Audio & Stems",
+    "title": "Unión y Mashup de 2 Canciones con Crossfade Automático",
+    "completed": true,
+    "detail": "Fusión continua de dos canciones en un único archivo MP3."
+  },
+  {
+    "id": "studio_stems",
+    "category": "🎛️ Estudio de Audio & Stems",
+    "title": "Separación de Pistas (Solo Voz / Solo Beat Instrumental)",
+    "completed": true,
+    "detail": "Aislamiento de voz y beat con cancelación de fase estéreo y filtrado espectral."
+  },
+  {
+    "id": "mobile_pwa",
+    "category": "📱 Modo Móvil & Offline (Samsung / iPhone)",
+    "title": "Instalable como PWA en iOS Safari y Android Chrome",
+    "completed": true,
+    "detail": "Web App Manifest, Service Worker y soporte para pantalla completa sin marcos de navegador."
+  },
+  {
+    "id": "mobile_lan",
+    "category": "📱 Modo Móvil & Offline (Samsung / iPhone)",
+    "title": "Acceso por Red Wi-Fi Local & Código QR",
+    "completed": true,
+    "detail": "Conexión directa desde el celular mediante la IP local para escuchar toda la música en casa."
+  }
+]

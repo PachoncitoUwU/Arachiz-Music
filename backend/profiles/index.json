@@ -1,0 +1,17 @@
+[
+  {
+    "id": "default",
+    "name": "Principal",
+    "icon": "fa-user"
+  },
+  {
+    "id": "iphone",
+    "name": "Mi iPhone",
+    "icon": "fa-mobile-screen"
+  },
+  {
+    "id": "samsung",
+    "name": "Mi Samsung",
+    "icon": "fa-mobile-screen-button"
+  }
+]
