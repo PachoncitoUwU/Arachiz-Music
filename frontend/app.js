@@ -443,17 +443,17 @@ function adaptAmbientGlow(coverUrl) {
   };
 }
 
-// ── Motor de Letras Sincronizadas (Karaoke Apple Music) ───────────────────────
+// ── Motor de Letras Sincronizadas Multi-Fuente (Letras.com + Whisper IA) ─────
 function setupLyricsEngine() {
   const btnAi = document.getElementById("btnAiTranscribe");
   if (btnAi) {
     btnAi.addEventListener("click", async () => {
       if (!activeTrack || !activeTrack.id) {
-        showError("Aviso", "Reproduce una canción de tu biblioteca para transcribir su letra con IA.");
+        showError("Aviso", "Reproduce una canción de tu biblioteca para sincronizar su letra con IA.");
         return;
       }
       btnAi.disabled = true;
-      btnAi.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Transcribiendo con IA...`;
+      btnAi.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sincronizando con IA...`;
 
       const placeholder = document.getElementById("lyricsPlaceholder");
       const flow = document.getElementById("lyricsLinesFlow");
@@ -462,21 +462,21 @@ function setupLyricsEngine() {
       if (placeholder) {
         placeholder.innerHTML = `
           <div class="lyrics-spin-pulse"><i class="fa-solid fa-wand-magic-sparkles fa-spin"></i></div>
-          <h3>Transcribiendo Audio con IA Whisper...</h3>
-          <p>Escuchando la voz y calculando timestamps sincronizados verso a verso. Esto toma ~20-30 segundos.</p>
+          <h3>Sincronizando Letra con IA Whisper...</h3>
+          <p>Buscando en Letras.com / Genius y alineando los versos con las marcas de tiempo del audio. (~15-25 segundos).</p>
         `;
         placeholder.classList.remove("hidden");
       }
       if (flow) flow.classList.add("hidden");
       if (badge) {
-        badge.textContent = "Transcribiendo...";
+        badge.textContent = "Sincronizando...";
         badge.style.color = "#0A84FF";
       }
 
-      showToast("Whisper IA Iniciado", `Transcribiendo voz para: ${activeTrack.title || "Canción"}`);
+      showToast("Sincronización IA Iniciada", `Procesando: ${activeTrack.title || "Canción"}`);
 
       try {
-        const res = await fetch(`${API_URL}/api/lyrics/transcribe`, {
+        const res = await fetch(`${API_URL}/api/lyrics/auto-sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ track_id: activeTrack.id }),
@@ -486,19 +486,22 @@ function setupLyricsEngine() {
           currentLyrics = data.lines;
           renderLyricsLines(data.lines);
           if (badge) {
-            badge.textContent = "IA Whisper Sincronizada";
+            badge.textContent = data.matched_from_web ? "Letras.com + IA Sync" : "IA Whisper Generada";
             badge.style.color = "#30D158";
           }
           if (activeAudio) {
             syncLyricsWithTime(activeAudio.currentTime);
           }
-          showToast("¡Letra Generada!", "La IA transcribió los versos y guardó el archivo .lrc sincronizado.");
+          const toastMsg = data.matched_from_web
+            ? "Letra oficial de Letras.com alineada y sincronizada al audio exitosamente."
+            : "La IA escuchó la canción, transcribió la voz y generó la letra sincronizada.";
+          showToast("¡Letra Sincronizada!", toastMsg);
         } else {
-          showError("Transcripción IA", data.error || "No se pudo transcribir el audio.");
+          showError("Sincronización IA", data.error || "No se pudo sincronizar el audio.");
           if (placeholder) {
             placeholder.innerHTML = `
               <div class="lyrics-spin-pulse"><i class="fa-solid fa-triangle-exclamation"></i></div>
-              <h3>No se pudo transcribir</h3>
+              <h3>No se pudo sincronizar</h3>
               <p>${escapeHtml(data.error || "Intenta de nuevo o reproduce otra canción.")}</p>
             `;
           }
@@ -507,7 +510,7 @@ function setupLyricsEngine() {
         showError("Error", err.message);
       } finally {
         btnAi.disabled = false;
-        btnAi.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Transcribir con IA`;
+        btnAi.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Sincronizar con IA`;
       }
     });
   }
@@ -527,6 +530,7 @@ async function fetchAndDisplayLyrics(track) {
   const placeholder = document.getElementById("lyricsPlaceholder");
   const flow = document.getElementById("lyricsLinesFlow");
   const badge = document.getElementById("lyricsStatusBadge");
+  const btnAi = document.getElementById("btnAiTranscribe");
 
   if (placeholder) placeholder.classList.remove("hidden");
   if (flow) flow.classList.add("hidden");
@@ -545,8 +549,16 @@ async function fetchAndDisplayLyrics(track) {
         currentLyrics = data.lines;
         renderLyricsLines(data.lines);
         if (badge) {
-          badge.textContent = data.synced ? "Sincronizada" : "Texto Plano";
-          badge.style.color = data.synced ? "#30D158" : "#FF9F0A";
+          if (data.synced) {
+            badge.textContent = data.source ? `Sincronizada (${data.source})` : "Sincronizada";
+            badge.style.color = "#30D158";
+          } else {
+            badge.textContent = data.source ? `Texto Plano (${data.source})` : "Texto Plano";
+            badge.style.color = "#FF9F0A";
+            if (btnAi) {
+              btnAi.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Sincronizar con IA`;
+            }
+          }
         }
         return;
       }
@@ -556,14 +568,17 @@ async function fetchAndDisplayLyrics(track) {
   currentLyrics = [];
   if (placeholder) {
     placeholder.innerHTML = `
-      <div class="lyrics-spin-pulse"><i class="fa-solid fa-microphone-slash"></i></div>
-      <h3>Sin letra disponible en línea</h3>
-      <p>Haz clic en "Transcribir con IA" para que Whisper escuche la canción y cree la letra automáticamente.</p>
+      <div class="lyrics-spin-pulse"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+      <h3>Sin letra sincronizada</h3>
+      <p>Toca el botón <strong>"Sincronizar con IA"</strong> para buscar en Letras.com o transcribir con Whisper IA automáticamente.</p>
     `;
     placeholder.classList.remove("hidden");
   }
   if (flow) flow.classList.add("hidden");
-  if (badge) badge.textContent = "No encontrada";
+  if (badge) {
+    badge.textContent = "No sincronizada";
+    badge.style.color = "#8E8E93";
+  }
 }
 
 function renderLyricsLines(lines) {

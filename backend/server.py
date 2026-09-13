@@ -456,12 +456,22 @@ def set_lyrics_offset(req: OffsetLyricsRequest):
 
 
 @app.post("/api/lyrics/transcribe")
-def transcribe_lyrics(req: TranscribeRequest):
-    """Transcribe la voz de la pista con IA Whisper si no tiene letra registrada."""
+@app.post("/api/lyrics/auto-sync")
+def transcribe_or_sync_lyrics(req: TranscribeRequest):
+    """
+    Sincronización multi-fuente con IA:
+    1. Si la letra está en Letras.com/web, la descarga y usa Whisper IA para alinearla al audio.
+    2. Si no existe en ninguna página, Whisper IA transcribe la voz y la sincroniza automáticamente.
+    """
     track = library_manager.get_track_by_id(req.track_id)
     if not track:
         raise HTTPException(status_code=404, detail="Canción no encontrada")
-    return LyricsManager.transcribe_with_ai(track["filepath"])
+    return LyricsManager.smart_sync_with_ai(
+        filepath=track["filepath"],
+        title=track.get("title", ""),
+        artist=track.get("artist", ""),
+        duration=track.get("duration_seconds", 0.0)
+    )
 
 
 @app.get("/api/video-info")
