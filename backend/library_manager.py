@@ -7,6 +7,8 @@ from mutagen import File as MutagenFile
 from mutagen.id3 import ID3, APIC
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4
+import requests
+import urllib.parse
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse, Response
 
@@ -132,16 +134,8 @@ class LibraryManager:
         except Exception:
             pass
 
-        # Generar URL de carátula
-        cover_url = f"/api/cover/{track_id}" if has_embedded_cover else ""
-        if not cover_url:
-            # Buscar imagen hermana en la carpeta (cover.jpg, folder.jpg o mismo nombre)
-            dir_path = os.path.dirname(full_path)
-            for img_name in [f"{name_no_ext}.jpg", f"{name_no_ext}.png", "cover.jpg", "folder.jpg"]:
-                img_path = os.path.join(dir_path, img_name)
-                if os.path.exists(img_path):
-                    cover_url = f"/api/cover/{track_id}?file=1"
-                    break
+        # Generar URL de carátula permanente para cada pista
+        cover_url = f"/api/cover/{track_id}"
 
         minutes = duration_seconds // 60
         seconds = duration_seconds % 60
@@ -218,46 +212,151 @@ class LibraryManager:
                     return f.read(), mime
 
         # Buscar carátula oficial en línea (iTunes Search API en HD 600x600)
-        official_cover = self.fetch_official_cover(track["title"], track["artist"], track_id)
+        official_cover = self.fetch_official_cover(track["title"], track["artist"], track_id, filename=track.get("filename"))
         if official_cover:
             return official_cover
 
         return None
 
-    def fetch_official_cover(self, title: str, artist: str, track_id: str) -> Optional[tuple[bytes, str]]:
-        """Busca y descarga la carátula oficial en HD 600x600 desde iTunes API si no hay una local."""
+    def fetch_official_cover(self, title: str, artist: str, track_id: str, filename: Optional[str] = None) -> Optional[tuple[bytes, str]]:
+        """Busca y descarga la carátula oficial en HD (iTunes 600x600 o Deezer 500x500) priorizando estrictamente Artista + Canción."""
         cache_file = os.path.join(self.covers_dir, f"{track_id}.jpg")
         if os.path.exists(cache_file):
             try:
                 with open(cache_file, "rb") as f:
-                    return f.read(), "image/jpeg"
+                    data = f.read()
+                    if len(data) > 1000:
+                        return data, "image/jpeg"
             except Exception:
                 pass
 
         try:
-            clean_t = re.sub(r"\(.*?\)|\[.*?\]", "", title).strip()
-            clean_a = re.sub(r"\(.*?\)|\[.*?\]", "", artist).strip()
-            if clean_a.lower() in ["desconocido", "unknown", "búsqueda"]:
-                clean_a = ""
+            # Limpieza de títulos y caracteres de codificación corruptos
+            clean_t = re.sub(r"[\ufffd\x00-\x1f]", "", title or "")
+            clean_a = re.sub(r"[\ufffd\x00-\x1f]", "", artist or "")
+            clean_t = re.sub(r"\(.*?\)|\[.*?\]", "", clean_t).strip()
+            clean_a = re.sub(r"\(.*?\)|\[.*?\]", "", clean_a).strip()
+            clean_t = re.sub(r"(?i)\b(video oficial|official video|official audio|audio oficial|video|lyrics|letra|remix)\b", "", clean_t).strip()
 
-            query = f"{clean_a} {clean_t}".strip()
-            res = requests.get(
-                "https://itunes.apple.com/search",
-                params={"term": query, "entity": "song", "limit": 1},
-                timeout=4,
-            )
-            if res.status_code == 200:
-                results = res.json().get("results", [])
-                if results:
-                    art_url = results[0].get("artworkUrl100", "")
-                    if art_url:
-                        # Convertir a 600x600 HD
-                        hd_url = art_url.replace("100x100bb.jpg", "600x600bb.jpg")
-                        img_res = requests.get(hd_url, timeout=5)
-                        if img_res.status_code == 200 and len(img_res.content) > 1000:
-                            with open(cache_file, "wb") as f:
-                                f.write(img_res.content)
-                            return img_res.content, "image/jpeg"
+            # Si el artista no viene o es 'Desconocido', intentar extraerlo del nombre de archivo (ej. 'Artista - Cancion.ext')
+            if not clean_a or clean_a.lower() in ["desconocido", "unknown", "búsqueda", "sound studio", "arachiz"]:
+                clean_a = ""
+                if filename and " - " in filename:
+                    base_fn = os.path.splitext(filename)[0]
+                    parts = base_fn.split(" - ", 1)
+                    cand_artist = parts[0].strip()
+                    cand_title = parts[1].strip()
+                    if cand_artist and cand_artist.lower() not in ["desconocido", "unknown"]:
+                        clean_a = cand_artist
+                        if not clean_t or clean_t == base_fn:
+                            clean_t = cand_title
+
+            first_artist = clean_a.split(",")[0].split("feat.")[0].split("ft.")[0].strip() if clean_a else ""
+
+            queries_to_try = []
+            # REGLA ESTRICTA: La búsqueda SIEMPRE debe incluir el Artista para no traer canciones homónimas de otros cantantes
+            if clean_a and clean_t:
+                queries_to_try.append(f"{clean_a} {clean_t}")
+            if first_artist and first_artist != clean_a and clean_t:
+                queries_to_try.append(f"{first_artist} {clean_t}")
+            if clean_a:
+                queries_to_try.append(f"{clean_a} {clean_t}".strip())
+            # Solo como último recurso desesperado si no hay ningún artista identificable
+            if not clean_a and clean_t:
+                queries_to_try.append(clean_t)
+
+            downloaded_bytes = None
+
+            # 1. Intentar con Apple iTunes Search API (HD 600x600)
+            for q in queries_to_try[:2]:
+                try:
+                    res = requests.get(
+                        "https://itunes.apple.com/search",
+                        params={"term": q, "entity": "song", "limit": 2},
+                        timeout=3.5,
+                    )
+                    if res.status_code == 200:
+                        results = res.json().get("results", [])
+                        if results:
+                            art_url = results[0].get("artworkUrl100", "")
+                            if art_url:
+                                hd_url = art_url.replace("100x100bb.jpg", "600x600bb.jpg")
+                                img_res = requests.get(hd_url, timeout=4)
+                                if img_res.status_code == 200 and len(img_res.content) > 1000:
+                                    downloaded_bytes = img_res.content
+                                    break
+                except Exception:
+                    pass
+
+            # 2. Si iTunes no lo encontró, intentar con Deezer API (Cover Big 500x500)
+            if not downloaded_bytes:
+                for q in queries_to_try[:2]:
+                    try:
+                        dz_res = requests.get(
+                            "https://api.deezer.com/search",
+                            params={"q": q, "limit": 2},
+                            timeout=3.5,
+                        )
+                        if dz_res.status_code == 200:
+                            dz_data = dz_res.json().get("data", [])
+                            if dz_data:
+                                dz_url = dz_data[0].get("album", {}).get("cover_big") or dz_data[0].get("album", {}).get("cover_medium")
+                                if dz_url:
+                                    img_res = requests.get(dz_url, timeout=4)
+                                    if img_res.status_code == 200 and len(img_res.content) > 1000:
+                                        downloaded_bytes = img_res.content
+                                        break
+                    except Exception:
+                        pass
+
+            # 3. Fallback infalible: Extraer carátula HD original de YouTube Music / YouTube
+            if not downloaded_bytes and clean_t:
+                try:
+                    search_q = f"{clean_a} {clean_t}".strip()
+                    ydl_opts = {"quiet": True, "extract_flat": True, "no_warnings": True}
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = ydl.extract_info(f"ytsearch1:{search_q}", download=False)
+                        entries = info.get("entries", []) if info else []
+                        if entries and entries[0]:
+                            thumbs = entries[0].get("thumbnails", [])
+                            if thumbs:
+                                thumb_url = thumbs[-1].get("url")
+                                if thumb_url:
+                                    img_res = requests.get(thumb_url, timeout=5)
+                                    if img_res.status_code == 200 and len(img_res.content) > 1000:
+                                        downloaded_bytes = img_res.content
+                except Exception:
+                    pass
+
+            if downloaded_bytes:
+                with open(cache_file, "wb") as f:
+                    f.write(downloaded_bytes)
+
+                # Incrustar en MP3 si existe para hacerlo permanente en el archivo físico
+                track = self.get_track_by_id(track_id)
+                if track and track.get("filepath") and track["filepath"].lower().endswith(".mp3"):
+                    try:
+                        audio = MP3(track["filepath"], ID3=ID3)
+                        try:
+                            audio.add_tags()
+                        except Exception:
+                            pass
+                        audio.tags.delall("APIC")
+                        audio.tags.add(
+                            APIC(
+                                encoding=3,
+                                mime="image/jpeg",
+                                type=3,
+                                desc="Cover",
+                                data=downloaded_bytes
+                            )
+                        )
+                        audio.save()
+                    except Exception:
+                        pass
+
+                return downloaded_bytes, "image/jpeg"
+
         except Exception:
             pass
 

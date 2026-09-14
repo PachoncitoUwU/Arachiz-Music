@@ -69,6 +69,31 @@ class PelotaDownloader:
 
         fmt = format_type.lower().strip()
         is_video = fmt in ["mp4", "video", "video_official", "mp4_official", "video_standard", "mp4_standard"]
+        expected_ext = "mp4" if is_video else ("m4a" if fmt in ["m4a", "aac"] else "mp3")
+
+        # ── Prevenir descargas duplicadas si la canción ya existe ─────────────
+        candidates_to_check = [
+            os.path.join(target_dir, f"{filename_base}.{expected_ext}"),
+            os.path.join(target_dir, f"{clean_title}.{expected_ext}"),
+            os.path.join(self.output_base_dir, f"{filename_base}.{expected_ext}"),
+            os.path.join(self.output_base_dir, f"{clean_title}.{expected_ext}"),
+        ]
+        # También chequear otras extensiones equivalentes ya descargadas
+        for check_ext in ["mp3", "m4a", "webm", "mp4", "wav", "flac"]:
+            candidates_to_check.append(os.path.join(target_dir, f"{filename_base}.{check_ext}"))
+            candidates_to_check.append(os.path.join(self.output_base_dir, f"{filename_base}.{check_ext}"))
+
+        for existing_cand in candidates_to_check:
+            if os.path.exists(existing_cand) and os.path.getsize(existing_cand) > 50000:
+                if progress_hook:
+                    progress_hook({
+                        "status": "completed",
+                        "percent": 100,
+                        "track": title,
+                        "filePath": existing_cand,
+                        "skipped_duplicate": True,
+                    })
+                return existing_cand
 
         # Determinar URL de búsqueda inteligente
         if direct_url and ("youtube.com" in direct_url or "youtu.be" in direct_url):

@@ -51,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setup3dIpodInteractions();
   setupDownloaderControls();
   setupPlayerControls();
+  setupGlobalKeyboardControls();
   setupLyricsEngine();
   setupMediaModeSwitch();
   setupLyricsOffsetControls();
@@ -62,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAudioStudio();
   setupChecklistView();
   setupMobileModal();
+  setupFloatingAiAssistant();
 
   // Iniciar en vista Reproductor
   switchView("player");
@@ -72,12 +74,17 @@ document.addEventListener("DOMContentLoaded", () => {
   loadChecklist();
 });
 
-// ── Service Worker (PWA Offline) ──────────────────────────────────────────────
+// ── Service Worker & Cache Cleanup ──────────────────────────────────────────
 function initServiceWorker() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").then((reg) => {
-      reg.update();
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => reg.unregister());
     }).catch(() => {});
+    if ("caches" in window) {
+      caches.keys().then((names) => {
+        names.forEach((name) => caches.delete(name));
+      }).catch(() => {});
+    }
   }
 }
 
@@ -104,6 +111,10 @@ function updateThemeIcon(theme) {
   if (btn) {
     btn.innerHTML = theme === "dark" ? `<i class="fa-solid fa-sun"></i>` : `<i class="fa-solid fa-moon"></i>`;
   }
+  const logo = document.getElementById("brandLogoImg");
+  if (logo) {
+    logo.src = theme === "light" ? "logo-light.png" : "logo-dark.png";
+  }
 }
 
 // ── Motor de Audio Dual con Crossfade Logarítmico (Web Audio Style) ───────────
@@ -111,6 +122,12 @@ function initAudioEngine() {
   primaryAudio = document.getElementById("primaryAudioElement");
   secondaryAudio = document.getElementById("secondaryAudioElement");
   activeAudio = primaryAudio;
+
+  // Restaurar crossfade de localStorage si existe
+  const savedXFade = localStorage.getItem("arachiz_crossfade_duration");
+  if (savedXFade !== null) {
+    crossfadeDuration = parseInt(savedXFade) || 0;
+  }
 
   if (primaryAudio) {
     primaryAudio.volume = 0.9;
@@ -121,25 +138,20 @@ function initAudioEngine() {
     setupAudioListeners(secondaryAudio);
   }
 
-  // Crossfade Select
-  const crossfadeSelect = document.getElementById("crossfadeSelect");
-  if (crossfadeSelect) {
-    crossfadeSelect.addEventListener("change", (e) => {
+  // Crossfade Select en Ajustes
+  const settingsCrossfade = document.getElementById("settingsCrossfadeSelect");
+  if (settingsCrossfade) {
+    settingsCrossfade.value = crossfadeDuration.toString();
+    settingsCrossfade.addEventListener("change", (e) => {
       crossfadeDuration = parseInt(e.target.value) || 0;
-      updateCrossfadeBadges();
+      localStorage.setItem("arachiz_crossfade_duration", crossfadeDuration);
+      showToast("Ajustes de Audio", `Crossfade establecido en ${crossfadeDuration}s`);
     });
-  }
-  updateCrossfadeBadges();
-}
-
-function updateCrossfadeBadges() {
-  const pbarBadge = document.getElementById("pbarCrossfadeBadge");
-  if (pbarBadge) {
-    pbarBadge.textContent = crossfadeDuration > 0 ? `X-Fade ${crossfadeDuration}s` : "Sin X-Fade";
   }
 }
 
 function setupAudioListeners(audioEl) {
+  let lastSaveTime = 0;
   audioEl.addEventListener("timeupdate", () => {
     if (audioEl !== activeAudio) return;
     if (audioEl.duration && !isUserSeeking) {
@@ -152,6 +164,16 @@ function setupAudioListeners(audioEl) {
 
       // Sincronizar letra en tiempo real
       syncLyricsWithTime(cur);
+
+      // Guardar posición de sesión en tiempo real (cada 2 segundos)
+      const now = Date.now();
+      if (now - lastSaveTime > 2000 && activeTrack) {
+        lastSaveTime = now;
+        try {
+          localStorage.setItem("arachiz_last_track", JSON.stringify(activeTrack));
+          localStorage.setItem("arachiz_last_time", cur.toString());
+        } catch (e) {}
+      }
 
       // Detectar momento de Crossfade
       if (crossfadeDuration > 0 && !isCrossfading && cur >= (dur - crossfadeDuration - 0.5) && dur > 10) {
@@ -214,7 +236,18 @@ function playTrack(track, fromQueueIndex = -1, immediate = true) {
   // Activar barra inferior persistente
   document.body.classList.add("player-dock-active");
 
+  try {
+    localStorage.setItem("arachiz_last_track", JSON.stringify(track));
+    localStorage.setItem("arachiz_last_queue_idx", queueIndex.toString());
+  } catch (e) {}
+
   const streamUrl = track.stream_url || (track.id ? `${API_URL}/api/stream/${track.id}` : track.preview_url);
+
+  // Pausar decks DJ si estaban sonando para evitar colisión de audio
+  if (typeof DjEngine !== "undefined" && DjEngine) {
+    if (DjEngine.deckA && DjEngine.deckA.isPlaying) DjEngine.togglePlay("a");
+    if (DjEngine.deckB && DjEngine.deckB.isPlaying) DjEngine.togglePlay("b");
+  }
 
   // Switch de audio element si es crossfade
   if (isCrossfading) {
@@ -289,6 +322,10 @@ function setPlayPauseUI(playing) {
   const ipodStatus = document.getElementById("ipodPlayStatus");
   if (ipodStatus) ipodStatus.innerHTML = playing ? `<i class="fa-solid fa-play"></i>` : `<i class="fa-solid fa-pause"></i>`;
 
+  if (navigator.mediaSession) {
+    navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+  }
+
   // Dot en Nav
   const dot = document.getElementById("playerPlayingDot");
   if (dot) dot.classList.toggle("hidden", !playing);
@@ -314,6 +351,118 @@ function playPreviousTrack() {
   let prevIdx = queueIndex - 1;
   if (prevIdx < 0) prevIdx = currentQueue.length - 1;
   playTrack(currentQueue[prevIdx], prevIdx, true);
+}
+
+// ── Control por Teclado y Teclas Multimedia de PC ─────────────────────────────
+function setupGlobalKeyboardControls() {
+  // Asegurar registro persistente de MediaSession (hardware multimedia de teclados y audífonos)
+  if ("mediaSession" in navigator) {
+    try {
+      navigator.mediaSession.setActionHandler("play", () => {
+        if (!isAudioPlaying) toggleMainPlayPause();
+      });
+      navigator.mediaSession.setActionHandler("pause", () => {
+        if (isAudioPlaying) toggleMainPlayPause();
+      });
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        playPreviousTrack();
+      });
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        playNextTrack(true);
+      });
+      navigator.mediaSession.setActionHandler("seekto", (details) => {
+        if (activeAudio && details.seekTime !== undefined) {
+          activeAudio.currentTime = details.seekTime;
+        }
+      });
+    } catch (e) {}
+  }
+
+  // Listener global de teclado (Espacio, Teclas Multimedia, Flechas, etc.)
+  window.addEventListener("keydown", (e) => {
+    // Si el usuario está escribiendo en un input, textarea o selector, no capturar
+    const tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
+    if (tag === "input" || tag === "textarea" || tag === "select" || (e.target && e.target.isContentEditable)) {
+      return;
+    }
+
+    const key = e.key;
+    const code = e.code;
+
+    // Teclas multimedia físicas del teclado de PC
+    if (key === "MediaPlayPause" || code === "MediaPlayPause") {
+      e.preventDefault();
+      toggleMainPlayPause();
+      return;
+    }
+    if (key === "MediaTrackNext" || code === "MediaTrackNext") {
+      e.preventDefault();
+      playNextTrack(true);
+      return;
+    }
+    if (key === "MediaTrackPrevious" || code === "MediaTrackPrevious") {
+      e.preventDefault();
+      playPreviousTrack();
+      return;
+    }
+
+    // Tecla Espacio o letra 'k' para Play/Pause
+    if (code === "Space" || key === " " || key === "k" || key === "K") {
+      e.preventDefault();
+      toggleMainPlayPause();
+      return;
+    }
+
+    // Flecha Derecha (avanzar 5s o siguiente canción con Shift/Alt)
+    if (code === "ArrowRight") {
+      if (e.shiftKey || e.altKey) {
+        e.preventDefault();
+        playNextTrack(true);
+      } else if (activeAudio && activeAudio.duration) {
+        e.preventDefault();
+        activeAudio.currentTime = Math.min(activeAudio.duration, activeAudio.currentTime + 5);
+      }
+      return;
+    }
+
+    // Flecha Izquierda (retroceder 5s o canción anterior con Shift/Alt)
+    if (code === "ArrowLeft") {
+      if (e.shiftKey || e.altKey) {
+        e.preventDefault();
+        playPreviousTrack();
+      } else if (activeAudio) {
+        e.preventDefault();
+        activeAudio.currentTime = Math.max(0, activeAudio.currentTime - 5);
+      }
+      return;
+    }
+
+    // Flecha Arriba / Abajo (Subir / Bajar volumen en pasos de 5%)
+    if (code === "ArrowUp") {
+      e.preventDefault();
+      const currentV = activeAudio ? activeAudio.volume : 0.8;
+      const newV = Math.min(1.0, currentV + 0.05);
+      if (primaryAudio) primaryAudio.volume = newV;
+      if (secondaryAudio) secondaryAudio.volume = newV;
+      const mVol = document.getElementById("mainVolumeSlider");
+      if (mVol) mVol.value = newV;
+      const pVol = document.getElementById("pbarVolumeSlider");
+      if (pVol) pVol.value = newV;
+      return;
+    }
+    if (code === "ArrowDown") {
+      e.preventDefault();
+      const currentV = activeAudio ? activeAudio.volume : 0.8;
+      const newV = Math.max(0.0, currentV - 0.05);
+      if (primaryAudio) primaryAudio.volume = newV;
+      if (secondaryAudio) secondaryAudio.volume = newV;
+      const mVol = document.getElementById("mainVolumeSlider");
+      if (mVol) mVol.value = newV;
+      const pVol = document.getElementById("pbarVolumeSlider");
+      if (pVol) pVol.value = newV;
+      return;
+    }
+  });
 }
 
 // ── Crossfade Suave entre Canciones ───────────────────────────────────────────
@@ -374,7 +523,10 @@ function updateNowPlayingUI(track) {
   const mainAlbum = document.getElementById("mainPlayerAlbum");
   const mainFmt = document.getElementById("mainPlayerFormatBadge");
 
-  if (mainCover) mainCover.src = coverSrc;
+  if (mainCover) {
+    mainCover.src = coverSrc;
+    mainCover.onerror = () => { mainCover.src = generateCoverDataUrl(track.title || "♪", track.artist || ""); };
+  }
   if (mainTitle) mainTitle.textContent = track.title || "Sin título";
   if (mainArtist) mainArtist.textContent = track.artist || "Desconocido";
   if (mainAlbum) mainAlbum.textContent = track.album || track.playlist || "Biblioteca";
@@ -384,7 +536,10 @@ function updateNowPlayingUI(track) {
   const pbarCover = document.getElementById("pbarCover");
   const pbarTitle = document.getElementById("pbarTitle");
   const pbarArtist = document.getElementById("pbarArtist");
-  if (pbarCover) pbarCover.src = coverSrc;
+  if (pbarCover) {
+    pbarCover.src = coverSrc;
+    pbarCover.onerror = () => { pbarCover.src = generateCoverDataUrl(track.title || "♪", track.artist || ""); };
+  }
   if (pbarTitle) pbarTitle.textContent = track.title || "Sin título";
   if (pbarArtist) pbarArtist.textContent = track.artist || "Desconocido";
 
@@ -392,7 +547,10 @@ function updateNowPlayingUI(track) {
   const ipodArt = document.getElementById("ipodAlbumArt");
   const ipodTitle = document.getElementById("ipodSongTitle");
   const ipodArtist = document.getElementById("ipodArtistName");
-  if (ipodArt) ipodArt.src = coverSrc;
+  if (ipodArt) {
+    ipodArt.src = coverSrc;
+    ipodArt.onerror = () => { ipodArt.src = generateCoverDataUrl(track.title || "♪", track.artist || ""); };
+  }
   if (ipodTitle) ipodTitle.textContent = track.title || "Sin título";
   if (ipodArtist) ipodArtist.textContent = track.artist || "Desconocido";
 
@@ -723,6 +881,9 @@ async function loadLibrary(showFeedback = false) {
       // Notificar a la Consola DJ y otros módulos
       window.dispatchEvent(new CustomEvent("arachiz_library_loaded"));
 
+      // Restaurar sesión previa automáticamente (Canción y segundo exacto)
+      restorePlaybackSession();
+
       if (showFeedback) {
         showToast("Biblioteca Actualizada", `${libraryData.total || 0} canciones encontradas.`);
       }
@@ -853,7 +1014,7 @@ function renderLibraryTracks(query = "", appendNextChunk = false) {
         <button class="btn-play-mini-row" title="Reproducir"><i class="fa-solid fa-play"></i></button>
       </div>
       <div class="col-title lib-track-cell-title">
-        <img src="${coverSrc}" class="lib-track-mini-thumb" alt="Cover" loading="lazy" />
+        <img src="${coverSrc}" class="lib-track-mini-thumb" alt="Cover" loading="lazy" onerror="this.onerror=null; this.src=generateCoverDataUrl('${escapeHtml(track.title || '')}', '${escapeHtml(track.artist || '')}');" />
         <span>${escapeHtml(track.title)}</span>
       </div>
       <div class="col-artist">${escapeHtml(track.artist)}</div>
@@ -1494,10 +1655,17 @@ function initViewNavigation() {
       }
     });
 
-    // Actualizar tabs principales
+    // Actualizar tabs principales (Desktop)
     Object.keys(primaryBtnMap).forEach((k) => {
       const b = primaryBtnMap[k];
       if (b) b.classList.toggle("active", k === viewName);
+    });
+
+    // Actualizar barra de navegación inferior móvil
+    document.querySelectorAll(".mobile-nav-btn").forEach((mobBtn) => {
+      const v = mobBtn.dataset.view;
+      const isAct = v === viewName || (v === "more" && ["dj", "mood", "studio", "checklist"].includes(viewName));
+      mobBtn.classList.toggle("active", isAct);
     });
 
     // Si la vista está en el dropdown, marcar 'Más' como activo
@@ -1586,7 +1754,7 @@ function initViewNavigation() {
   const cStudio = document.getElementById("cardFeatStudio");
   if (cStudio) cStudio.addEventListener("click", () => switchView("studio"));
 
-  // Click en Track Info de Barra persistente expande a pantalla de Reproductor
+  // Click en Track Info de Barra persistente expande físicamente a pantalla de Reproductor
   const pbarInfo = document.getElementById("pbarTrackInfoBlock");
   if (pbarInfo) pbarInfo.addEventListener("click", () => switchView("player"));
 
@@ -1595,6 +1763,39 @@ function initViewNavigation() {
 
   const pbarExpand = document.getElementById("pbarBtnExpand");
   if (pbarExpand) pbarExpand.addEventListener("click", () => switchView("player"));
+
+  // Barra de Navegación Inferior Móvil (Mobile Bottom Nav)
+  document.querySelectorAll(".mobile-nav-btn").forEach((mobBtn) => {
+    mobBtn.addEventListener("click", () => {
+      const v = mobBtn.dataset.view;
+      if (v === "more") {
+        if (navMoreMenu) {
+          const isHid = navMoreMenu.classList.contains("hidden");
+          if (isHid) {
+            navMoreMenu.style.position = "fixed";
+            navMoreMenu.style.setProperty("bottom", "74px", "important");
+            navMoreMenu.style.setProperty("top", "auto", "important");
+            navMoreMenu.style.setProperty("right", "12px", "important");
+            navMoreMenu.style.setProperty("left", "auto", "important");
+            navMoreMenu.style.setProperty("z-index", "1000000", "important");
+            navMoreMenu.classList.remove("hidden");
+          } else {
+            navMoreMenu.classList.add("hidden");
+          }
+        }
+      } else if (v) {
+        switchView(v);
+      }
+    });
+  });
+
+  // Botón volver / colapsar en la pantalla del reproductor móvil
+  const btnMobBack = document.getElementById("btnPlayerMobileBack");
+  if (btnMobBack) {
+    btnMobBack.addEventListener("click", () => {
+      switchView("library");
+    });
+  }
 }
 
 // ── CONTROLES DEL REPRODUCTOR (Main & Barra Inferior) ─────────────────────────
@@ -1610,14 +1811,23 @@ function setupPlayerControls() {
   if (btnMainNext) btnMainNext.addEventListener("click", () => playNextTrack(true));
 
   // Persistent Bar Controls
+  const pbarEl = document.getElementById("persistentPlayerBar");
+  if (pbarEl) {
+    pbarEl.addEventListener("click", (e) => {
+      // Ignorar si se hizo clic en botones, inputs, sliders o enlaces
+      if (e.target.closest("button, input, select, a, .pbar-slider-track, .pbar-volume-box")) return;
+      switchView("player");
+    });
+  }
+
   const btnPbarPlay = document.getElementById("pbarBtnPlayPause");
-  if (btnPbarPlay) btnPbarPlay.addEventListener("click", toggleMainPlayPause);
+  if (btnPbarPlay) btnPbarPlay.addEventListener("click", (e) => { e.stopPropagation(); toggleMainPlayPause(); });
 
   const btnPbarPrev = document.getElementById("pbarBtnPrev");
-  if (btnPbarPrev) btnPbarPrev.addEventListener("click", playPreviousTrack);
+  if (btnPbarPrev) btnPbarPrev.addEventListener("click", (e) => { e.stopPropagation(); playPreviousTrack(); });
 
   const btnPbarNext = document.getElementById("pbarBtnNext");
-  if (btnPbarNext) btnPbarNext.addEventListener("click", () => playNextTrack(true));
+  if (btnPbarNext) btnPbarNext.addEventListener("click", (e) => { e.stopPropagation(); playNextTrack(true); });
 
   // Timeline Seeking (Main Player)
   const mainTrack = document.getElementById("mainTimelineTrack");
@@ -1634,6 +1844,7 @@ function setupPlayerControls() {
   const pbarTrack = document.getElementById("pbarSliderTrack");
   if (pbarTrack) {
     pbarTrack.addEventListener("click", (e) => {
+      e.stopPropagation();
       if (!activeAudio || !activeAudio.duration) return;
       const rect = pbarTrack.getBoundingClientRect();
       const pct = (e.clientX - rect.left) / rect.width;
@@ -1641,19 +1852,101 @@ function setupPlayerControls() {
     });
   }
 
-  // Volume Sliders (Sincronizados)
-  const mainVol = document.getElementById("mainVolumeSlider");
+  // Volume Sliders (Sincronizados: Pbar y Bottom Sheet)
   const pbarVol = document.getElementById("pbarVolumeSlider");
+  const sheetVol = document.getElementById("sheetVolumeSlider");
 
   const syncVol = (val) => {
     if (primaryAudio) primaryAudio.volume = val;
     if (secondaryAudio) secondaryAudio.volume = val;
-    if (mainVol) mainVol.value = val;
     if (pbarVol) pbarVol.value = val;
+    if (sheetVol) sheetVol.value = val;
   };
 
-  if (mainVol) mainVol.addEventListener("input", (e) => syncVol(parseFloat(e.target.value)));
   if (pbarVol) pbarVol.addEventListener("input", (e) => syncVol(parseFloat(e.target.value)));
+  if (sheetVol) sheetVol.addEventListener("input", (e) => syncVol(parseFloat(e.target.value)));
+
+  // Bottom Sheet: Opciones Avanzadas del Reproductor
+  const sheet = document.getElementById("playerOptionsSheet");
+  const btnOpenSheet = document.getElementById("btnOpenPlayerOptionsSheet");
+  const btnMobileOptions = document.getElementById("btnPlayerMobileOptions");
+  const btnCloseSheet = document.getElementById("btnClosePlayerOptionsSheet");
+  const sheetCrossfade = document.getElementById("sheetCrossfadeSelect");
+  const settingsCrossfade = document.getElementById("settingsCrossfadeSelect");
+
+  const openSheet = () => {
+    if (sheet) sheet.classList.remove("hidden");
+  };
+  const closeSheet = () => {
+    if (sheet) sheet.classList.add("hidden");
+  };
+
+  if (btnOpenSheet) btnOpenSheet.addEventListener("click", openSheet);
+  if (btnMobileOptions) btnMobileOptions.addEventListener("click", openSheet);
+  if (btnCloseSheet) btnCloseSheet.addEventListener("click", closeSheet);
+  if (sheet) {
+    sheet.addEventListener("click", (e) => {
+      if (e.target === sheet) closeSheet();
+    });
+  }
+
+  // Sincronizar select de crossfade entre Bottom Sheet y Modal de Ajustes
+  if (sheetCrossfade) {
+    sheetCrossfade.value = crossfadeDuration.toString();
+    sheetCrossfade.addEventListener("change", (e) => {
+      crossfadeDuration = parseInt(e.target.value) || 0;
+      localStorage.setItem("arachiz_crossfade_duration", crossfadeDuration);
+      if (settingsCrossfade) settingsCrossfade.value = e.target.value;
+      showToast("Crossfade", `Transición configurada en ${crossfadeDuration}s`);
+    });
+  }
+  if (settingsCrossfade && sheetCrossfade) {
+    settingsCrossfade.addEventListener("change", (e) => {
+      sheetCrossfade.value = e.target.value;
+    });
+  }
+
+  // Calibración de letras en el Bottom Sheet
+  const sBtnMinus = document.getElementById("sheetBtnLyricMinus");
+  const sBtnPlus = document.getElementById("sheetBtnLyricPlus");
+  const sBtnReset = document.getElementById("sheetBtnLyricReset");
+  const sDisp = document.getElementById("sheetLyricOffsetDisplay");
+  const mainDisp = document.getElementById("lyricOffsetDisplay");
+
+  const updateOffsetUI = () => {
+    const txt = `${trackLyricsOffset >= 0 ? "+" : ""}${trackLyricsOffset.toFixed(1)}s`;
+    if (sDisp) sDisp.textContent = txt;
+    if (mainDisp) mainDisp.textContent = txt;
+    if (activeAudio) syncLyricsWithTime(activeAudio.currentTime);
+  };
+
+  if (sBtnMinus) sBtnMinus.addEventListener("click", () => { trackLyricsOffset = Math.round((trackLyricsOffset - 0.5) * 10) / 10; updateOffsetUI(); });
+  if (sBtnPlus) sBtnPlus.addEventListener("click", () => { trackLyricsOffset = Math.round((trackLyricsOffset + 0.5) * 10) / 10; updateOffsetUI(); });
+  if (sBtnReset) sBtnReset.addEventListener("click", () => { trackLyricsOffset = 0.0; updateOffsetUI(); });
+
+  const btnGoStudio = document.getElementById("sheetBtnGoStudio");
+  if (btnGoStudio) {
+    btnGoStudio.addEventListener("click", () => {
+      closeSheet();
+      switchView("studio");
+    });
+  }
+
+  // Botón Like / Favorito con microinteracción
+  const btnFav = document.getElementById("btnPlayerFavorite");
+  if (btnFav) {
+    btnFav.addEventListener("click", () => {
+      if (!activeTrack) return;
+      const isLiked = btnFav.classList.toggle("liked");
+      const icon = btnFav.querySelector("i");
+      if (icon) {
+        icon.className = isLiked ? "fa-solid fa-heart" : "fa-regular fa-heart";
+      }
+      if (typeof ProfileManager !== "undefined" && ProfileManager.toggleFavorite) {
+        ProfileManager.toggleFavorite(activeTrack.id);
+      }
+    });
+  }
 }
 
 // ── DESCARGADOR DE PLAYLISTS & VIDEO HD (Existente y Potenciado) ─────────────
@@ -1759,7 +2052,21 @@ async function analyzeLink() {
     }
 
     const data = await res.json();
-    currentTracks = data.tracks || [];
+    
+    // Deduplicar canciones idénticas en la lista (mismo título y artista normalizados)
+    const seenSongs = new Set();
+    const unique = [];
+    (data.tracks || []).forEach((t) => {
+      const cleanTitle = (t.title || "").toLowerCase().replace(/[^\w\s]/gi, "").trim();
+      const cleanArtist = (t.artist || "").toLowerCase().replace(/[^\w\s]/gi, "").trim();
+      const dedupeKey = `${cleanTitle}:::${cleanArtist}`;
+      if (!seenSongs.has(dedupeKey)) {
+        seenSongs.add(dedupeKey);
+        unique.push(t);
+      }
+    });
+
+    currentTracks = unique;
     filteredTracks = [...currentTracks];
     selectedIndices = new Set(currentTracks.map((_, i) => i));
 
@@ -2402,10 +2709,10 @@ function initAmbientParticleBackground() {
     constructor() {
       this.x = Math.random() * width;
       this.y = Math.random() * height;
-      this.vx = (Math.random() - 0.5) * 0.5;
-      this.vy = (Math.random() - 0.5) * 0.5;
-      this.radius = Math.random() * 2 + 1;
-      this.baseAlpha = Math.random() * 0.35 + 0.15;
+      this.vx = (Math.random() - 0.5) * 0.16;
+      this.vy = (Math.random() - 0.5) * 0.16;
+      this.radius = Math.random() * 1.8 + 0.8;
+      this.baseAlpha = Math.random() * 0.22 + 0.10;
     }
 
     update() {
@@ -2464,6 +2771,7 @@ function initAmbientParticleBackground() {
 }
 
 // ── Notificaciones Toast & Helpers ────────────────────────────────────────────
+let _toastTimer = null;
 function showToast(title, message) {
   const toast = document.getElementById("toastNotification");
   const tTitle = document.getElementById("toastTitle");
@@ -2471,20 +2779,37 @@ function showToast(title, message) {
   if (tTitle) tTitle.textContent = title;
   if (tMsg) tMsg.textContent = message;
   if (toast) {
+    if (_toastTimer) clearTimeout(_toastTimer);
+    toast.removeAttribute("hidden");
     toast.classList.remove("hidden");
-    setTimeout(() => toast.classList.add("hidden"), 3500);
+    toast.style.setProperty("display", "flex", "important");
+    _toastTimer = setTimeout(() => hideToast("success"), 3500);
   }
 }
 
+let _errorTimer = null;
 function showError(title, message) {
+  console.warn("[Arachiz Toast Error]:", title, message);
   const toast = document.getElementById("toastError");
   const tTitle = document.getElementById("toastErrorTitle");
   const tMsg = document.getElementById("toastErrorMessage");
   if (tTitle) tTitle.textContent = title;
   if (tMsg) tMsg.textContent = message;
   if (toast) {
+    if (_errorTimer) clearTimeout(_errorTimer);
+    toast.removeAttribute("hidden");
     toast.classList.remove("hidden");
-    setTimeout(() => toast.classList.add("hidden"), 4000);
+    toast.style.setProperty("display", "flex", "important");
+    _errorTimer = setTimeout(() => hideToast("error"), 4500);
+  }
+}
+
+function hideToast(type) {
+  const toast = document.getElementById(type === "error" ? "toastError" : "toastNotification");
+  if (toast) {
+    toast.setAttribute("hidden", "true");
+    toast.classList.add("hidden");
+    toast.style.setProperty("display", "none", "important");
   }
 }
 
@@ -2568,15 +2893,32 @@ function generateCoverDataUrl(title, artist) {
 
 /**
  * Returns the best available cover image source for a track.
- * Falls back to a dynamically generated canvas cover.
+ * Prioritizes the backend cover endpoint (which delivers high-res audio cover or Liquid Glass SVG).
  */
 function getTrackCoverSrc(track) {
-  if (track && track.cover_url) return track.cover_url;
+  if (track && track.id) {
+    return `${API_URL}/api/cover/${track.id}`;
+  }
+  if (track && track.cover_url) {
+    return track.cover_url.startsWith("http") ? track.cover_url : `${API_URL}${track.cover_url}`;
+  }
   if (track && (track.title || track.artist)) {
     return generateCoverDataUrl(track.title || "", track.artist || "");
   }
   return generateCoverDataUrl("♪", "");
 }
+
+// Manejador infalible global contra errores 404 de carátulas
+window.addEventListener("error", (e) => {
+  if (e.target && e.target.tagName === "IMG") {
+    const img = e.target;
+    if (img.dataset.hasFallback) return;
+    img.dataset.hasFallback = "true";
+    const title = img.dataset.title || img.alt || "♪";
+    const artist = img.dataset.artist || "";
+    img.src = generateCoverDataUrl(title, artist);
+  }
+}, true);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MÓDULO 1: CONMUTADOR DE CARÁTULA HD vs VIDEO OFICIAL HD
@@ -2715,7 +3057,7 @@ function setupMediaModeSwitch() {
           currentVideoInfo = {
             is_local_video: false,
             video_id: vid,
-            embed_url: `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&enablejsapi=1&modestbranding=1`,
+            embed_url: `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&controls=0&loop=1&playlist=${vid}&enablejsapi=1&modestbranding=1`,
           };
           setMediaMode("video");
           showToast("Video Vinculado", "Reproduciendo video oficial en HD.");
@@ -2768,21 +3110,29 @@ function activateOfficialVideo() {
     return;
   }
 
-  // Pausar audio principal para que no se duplique el sonido
-  if (activeAudio && !activeAudio.paused) {
-    activeAudio.pause();
-    setPlayPauseUI(false);
+  // Estilo Spotify Canvas: La canción principal NO se pausa, sigue sonando en alta calidad
+  if (activeAudio && activeAudio.paused && isAudioPlaying) {
+    activeAudio.play().catch(() => {});
+    setPlayPauseUI(true);
   }
 
   if (currentVideoInfo.is_local_video) {
     if (localPlayer) {
       localPlayer.src = currentVideoInfo.stream_url;
+      localPlayer.muted = true; // Sin sonido para no interferir con la canción
+      localPlayer.loop = true;
       localPlayer.classList.remove("hidden");
       localPlayer.play().catch(() => {});
     }
   } else if (currentVideoInfo.embed_url) {
     if (iframe) {
-      iframe.src = currentVideoInfo.embed_url;
+      // YouTube Embed con mute=1 y loop=1 para funcionar como canvas visual silencioso
+      const vid = currentVideoInfo.video_id;
+      const mutedEmbedUrl = vid 
+        ? `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&controls=0&loop=1&playlist=${vid}&modestbranding=1&enablejsapi=1`
+        : (currentVideoInfo.embed_url || "");
+      iframe.src = mutedEmbedUrl;
+      iframe.style.pointerEvents = "none"; // Visual Canvas: no interferir con clicks ni robar foco
       iframe.classList.remove("hidden");
     }
   } else {
@@ -2797,9 +3147,9 @@ function deactivateOfficialVideo() {
   const iframe = document.getElementById("mainOfficialVideoIframe");
   const localPlayer = document.getElementById("mainOfficialVideoPlayer");
   if (iframe) { iframe.src = ""; iframe.classList.add("hidden"); }
-  if (localPlayer) { localPlayer.pause(); localPlayer.classList.add("hidden"); }
+  if (localPlayer) { localPlayer.pause(); localPlayer.muted = true; localPlayer.classList.add("hidden"); }
 
-  // Reanudar audio normal
+  // Asegurar que el audio principal siga sonando
   if (activeAudio && isAudioPlaying && activeAudio.paused) {
     activeAudio.play().catch(() => {});
     setPlayPauseUI(true);
@@ -2852,6 +3202,21 @@ function setupLyricsOffsetControls() {
       }).catch(() => {});
     }
   });
+
+  // Toggle del Popover sutil Apple
+  const btnToggle = document.getElementById("btnToggleLyricOffset");
+  const popover = document.getElementById("lyricOffsetPopover");
+  if (btnToggle && popover) {
+    btnToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      popover.classList.toggle("hidden");
+    });
+    document.addEventListener("click", (e) => {
+      if (!popover.contains(e.target) && e.target !== btnToggle && !btnToggle.contains(e.target)) {
+        popover.classList.add("hidden");
+      }
+    });
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3011,7 +3376,7 @@ const DjEngine = {
     this.deckB.gainNode.gain.setValueAtTime(gainB * faderB, this.ctx?.currentTime || 0);
   },
 
-  loadTrack(deckKey, track) {
+  loadTrack(deckKey, track, notify = false) {
     this.ensureContext();
     const deck = deckKey === "a" ? this.deckA : this.deckB;
     deck.track = track;
@@ -3029,7 +3394,9 @@ const DjEngine = {
     if (artistEl) artistEl.textContent = track.artist || "Artista";
     if (coverEl) coverEl.src = getTrackCoverSrc(track);
 
-    showToast(`Deck ${deckKey.toUpperCase()} Listo`, `Cargada: ${track.title}`);
+    if (notify) {
+      showToast(`Deck ${deckKey.toUpperCase()} Listo`, `Cargada: ${track.title}`);
+    }
   },
 
   togglePlay(deckKey) {
@@ -3053,6 +3420,10 @@ const DjEngine = {
     }
 
     if (deck.audio.paused) {
+      if (window.audioPlayer && !window.audioPlayer.paused) {
+        window.audioPlayer.pause();
+        updatePlayPauseUI(false);
+      }
       deck.audio.play().then(() => {
         deck.isPlaying = true;
         if (btnPlay) {
@@ -3310,7 +3681,7 @@ function setupDjConsole() {
     selectA.addEventListener("change", (e) => {
       const trackId = e.target.value;
       const track = (libraryData.tracks || []).find((t) => t.id === trackId);
-      if (track) DjEngine.loadTrack("a", track);
+      if (track) DjEngine.loadTrack("a", track, true);
     });
   }
 
@@ -3318,7 +3689,7 @@ function setupDjConsole() {
     selectB.addEventListener("change", (e) => {
       const trackId = e.target.value;
       const track = (libraryData.tracks || []).find((t) => t.id === trackId);
-      if (track) DjEngine.loadTrack("b", track);
+      if (track) DjEngine.loadTrack("b", track, true);
     });
   }
 
@@ -3454,17 +3825,26 @@ function setupDjConsole() {
     });
   });
 
-  // Scratch en Platos Jog Wheel
+  // Scratch en Platos Jog Wheel (Suave y sin bloqueos de audio)
   const setupScratch = (jogId, deckKey) => {
     const jog = document.getElementById(jogId);
     if (!jog) return;
     let isScratching = false;
     let lastX = 0;
+    let originalRate = 1.0;
+    let wasPlaying = false;
+    let lastSeekTime = 0;
 
     const onStart = (e) => {
       isScratching = true;
       lastX = e.clientX || (e.touches && e.touches[0].clientX);
       DjEngine.ensureContext();
+      const deck = deckKey === "a" ? DjEngine.deckA : DjEngine.deckB;
+      if (deck.audio) {
+        wasPlaying = deck.isPlaying && !deck.audio.paused;
+        originalRate = deck.audio.playbackRate || 1.0;
+      }
+      jog.classList.add("scratching");
     };
 
     const onMove = (e) => {
@@ -3474,12 +3854,25 @@ function setupDjConsole() {
       lastX = curX;
 
       const deck = deckKey === "a" ? DjEngine.deckA : DjEngine.deckB;
-      if (deck.audio && !isNaN(deck.audio.duration)) {
-        deck.audio.currentTime = Math.max(0, Math.min(deck.audio.duration, deck.audio.currentTime + delta * 0.04));
-      }
+      if (!deck.audio || isNaN(deck.audio.duration)) return;
+
+      // Modulación fluida y continua de velocidad/pitch en tiempo real (efecto vinilo auténtico sin congelar buffer)
+      const speedFactor = Math.max(0.15, Math.min(3.0, 1.0 + delta * 0.05));
+      deck.audio.playbackRate = speedFactor;
     };
 
-    const onEnd = () => { isScratching = false; };
+    const onEnd = () => {
+      if (!isScratching) return;
+      isScratching = false;
+      jog.classList.remove("scratching");
+      const deck = deckKey === "a" ? DjEngine.deckA : DjEngine.deckB;
+      if (deck.audio) {
+        deck.audio.playbackRate = originalRate;
+        if (wasPlaying && deck.audio.paused) {
+          deck.audio.play().catch(() => {});
+        }
+      }
+    };
 
     jog.addEventListener("mousedown", onStart);
     window.addEventListener("mousemove", onMove);
@@ -3859,4 +4252,258 @@ const ProfileManager = {
 function setupProfileManager() {
   ProfileManager.init();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: RESTAURACIÓN AUTOMÁTICA DE SESIÓN (CANCIÓN & TIEMPO AL RECARGAR)
+// ─────────────────────────────────────────────────────────────────────────────
+function restorePlaybackSession() {
+  try {
+    const rawTrack = localStorage.getItem("arachiz_last_track");
+    const rawTime = localStorage.getItem("arachiz_last_time");
+    const rawQueueIdx = localStorage.getItem("arachiz_last_queue_idx");
+
+    if (!rawTrack) return;
+    const track = JSON.parse(rawTrack);
+    if (!track || (!track.id && !track.stream_url && !track.title)) return;
+
+    const resumeTime = parseFloat(rawTime) || 0;
+    const qIdx = parseInt(rawQueueIdx) >= 0 ? parseInt(rawQueueIdx) : 0;
+
+    // Cargar la pista en modo silencioso (sin autoplay forzado por políticas de navegadores)
+    playTrack(track, qIdx, false);
+
+    if (activeAudio && resumeTime > 0) {
+      activeAudio.addEventListener("loadedmetadata", function seekOnce() {
+        activeAudio.currentTime = Math.min(resumeTime, activeAudio.duration || resumeTime);
+        activeAudio.removeEventListener("loadedmetadata", seekOnce);
+      }, { once: true });
+    }
+
+    // Feedback no invasivo
+    console.log(`[Arachiz] Sesión restaurada: ${track.title} en ${resumeTime.toFixed(1)}s`);
+  } catch (err) {
+    console.warn("[Arachiz] Error restaurando sesión:", err);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO: ASISTENTE MUSICAL IA FLOTANTE (ESTILO SPOTIFY DJ / SIRI APPLE)
+// ─────────────────────────────────────────────────────────────────────────────
+function setupFloatingAiAssistant() {
+  const triggerBtn = document.getElementById("btnFloatingAiTrigger");
+  const drawer = document.getElementById("aiAssistantDrawer");
+  const closeBtn = document.getElementById("btnCloseAiDrawer");
+  const sendBtn = document.getElementById("btnSendAiPrompt");
+  const micBtn = document.getElementById("btnAiMic");
+  const inputEl = document.getElementById("aiUserInput");
+  const chatFeed = document.getElementById("aiChatFeed");
+  const recGrid = document.getElementById("aiRecommendationsGrid");
+  const vibePills = document.querySelectorAll(".ai-vibe-pill");
+
+  if (!triggerBtn || !drawer) return;
+
+  // Abrir / Cerrar Drawer
+  triggerBtn.addEventListener("click", () => {
+    drawer.classList.toggle("hidden");
+    if (!drawer.classList.contains("hidden")) {
+      inputEl?.focus();
+    }
+  });
+
+  closeBtn?.addEventListener("click", () => {
+    drawer.classList.add("hidden");
+  });
+
+  // Dictado por voz Web Speech Recognition
+  let recognition = null;
+  if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+    const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechAPI();
+    recognition.lang = "es-ES";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      if (inputEl) {
+        inputEl.value = transcript;
+        processAiPrompt(transcript);
+      }
+    };
+
+    recognition.onerror = () => {
+      micBtn?.classList.remove("recording");
+    };
+
+    recognition.onend = () => {
+      micBtn?.classList.remove("recording");
+    };
+  }
+
+  if (micBtn) {
+    micBtn.addEventListener("click", () => {
+      if (!recognition) {
+        showToast("Micrófono", "Dictado por voz no disponible en este navegador. Puedes escribir tu petición.");
+        return;
+      }
+      if (micBtn.classList.contains("recording")) {
+        recognition.stop();
+        micBtn.classList.remove("recording");
+      } else {
+        try {
+          recognition.start();
+          micBtn.classList.add("recording");
+          showToast("Escuchando...", "Habla ahora: di la vibra, género o artista que quieres.");
+        } catch (e) {
+          micBtn.classList.remove("recording");
+        }
+      }
+    });
+  }
+
+  // Enviar Petición por texto
+  const handleSend = () => {
+    const text = inputEl ? inputEl.value.trim() : "";
+    if (!text) return;
+    inputEl.value = "";
+    processAiPrompt(text);
+  };
+
+  sendBtn?.addEventListener("click", handleSend);
+  inputEl?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleSend();
+  });
+
+  // Vibe Pills rápidas
+  vibePills.forEach((pill) => {
+    pill.addEventListener("click", () => {
+      const vibe = pill.dataset.vibe || pill.textContent.trim();
+      processAiPrompt(vibe);
+    });
+  });
+
+  async function processAiPrompt(query) {
+    appendUserBubble(query);
+
+    // Placeholder de pensamiento IA
+    const aiBubble = appendAiBubble("Buscando las mejores canciones para esa vibra...");
+
+    try {
+      // 1. Buscar coincidencias en la biblioteca local
+      const localMatches = searchLibraryByVibe(query);
+
+      // 2. Descubrir canciones adicionales en internet vía backend
+      let webMatches = [];
+      try {
+        const res = await fetch(`${API_URL}/api/mood/discover?query=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          webMatches = data.tracks || [];
+        }
+      } catch (e) {}
+
+      // Combinar recomendaciones sin duplicados
+      const combined = [...localMatches, ...webMatches].slice(0, 6);
+
+      if (combined.length === 0) {
+        aiBubble.innerHTML = `<p>No encontré canciones exactas para '<em>${escapeHtml(query)}</em>', pero prueba con géneros como Reggaeton, Trap, Pop, Rock o estados de ánimo como 'relax' o 'entrenar'.</p>`;
+        return;
+      }
+
+      aiBubble.innerHTML = `<p>✨ ¡Listo! Aquí tienes canciones perfectas para esa vibra. Puedes reproducirlas de inmediato o agregarlas a tu cola de reproducción:</p>`;
+
+      renderAiCards(combined);
+    } catch (err) {
+      aiBubble.innerHTML = `<p>Hubo un inconveniente al procesar tu solicitud: ${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  function appendUserBubble(text) {
+    if (!chatFeed) return;
+    const div = document.createElement("div");
+    div.className = "ai-chat-bubble user-msg";
+    div.innerHTML = `<p>${escapeHtml(text)}</p>`;
+    chatFeed.appendChild(div);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+  }
+
+  function appendAiBubble(text) {
+    if (!chatFeed) return null;
+    const div = document.createElement("div");
+    div.className = "ai-chat-bubble ai-msg";
+    div.innerHTML = `<p>${escapeHtml(text)}</p>`;
+    chatFeed.appendChild(div);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+    return div;
+  }
+
+  function searchLibraryByVibe(query) {
+    if (!libraryData || !libraryData.tracks) return [];
+    const q = query.toLowerCase();
+    return libraryData.tracks.filter((t) => {
+      const matchText = `${t.title || ""} ${t.artist || ""} ${t.album || ""} ${t.mood || ""}`.toLowerCase();
+      return matchText.includes(q);
+    });
+  }
+
+  function renderAiCards(tracks) {
+    if (!recGrid) return;
+    recGrid.innerHTML = "";
+    recGrid.classList.remove("hidden");
+
+    tracks.forEach((track) => {
+      const card = document.createElement("div");
+      card.className = "ai-rec-card";
+
+      const coverSrc = track.cover || track.cover_url || getTrackCoverSrc(track);
+
+      card.innerHTML = `
+        <div class="ai-rec-left">
+          <img src="${escapeHtml(coverSrc)}" class="ai-rec-cover" alt="Cover" onerror="this.src='https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80'" />
+          <div class="ai-rec-info">
+            <span class="ai-rec-title" title="${escapeHtml(track.title || 'Canción')}">${escapeHtml(track.title || 'Canción')}</span>
+            <span class="ai-rec-artist">${escapeHtml(track.artist || 'Artista')} ${track.duration ? '• ' + track.duration : ''}</span>
+          </div>
+        </div>
+        <div class="ai-rec-actions">
+          <button class="ai-rec-btn-play" title="Reproducir ahora"><i class="fa-solid fa-play"></i></button>
+          <button class="ai-rec-btn-queue" title="Agregar a la cola"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      `;
+
+      // Evento Reproducir
+      const btnPlay = card.querySelector(".ai-rec-btn-play");
+      btnPlay?.addEventListener("click", () => {
+        if (track.id) {
+          playTrack(track, -1, true);
+        } else if (track.query || track.direct_url) {
+          // Si viene de YouTube discover
+          showToast("Cargando Canción", `Iniciando: ${track.title}`);
+          const fakeTrack = {
+            id: null,
+            title: track.title,
+            artist: track.artist,
+            cover_url: track.cover,
+            stream_url: track.direct_url,
+          };
+          playTrack(fakeTrack, -1, true);
+        }
+        showToast("Arachiz IA", `Reproduciendo: ${track.title}`);
+      });
+
+      // Evento Agregar a Cola
+      const btnQueue = card.querySelector(".ai-rec-btn-queue");
+      btnQueue?.addEventListener("click", () => {
+        currentQueue.push(track);
+        showToast("Agregada a la Cola", `+ ${track.title}`);
+      });
+
+      recGrid.appendChild(card);
+    });
+
+    chatFeed.appendChild(recGrid);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+  }
+}
+
 

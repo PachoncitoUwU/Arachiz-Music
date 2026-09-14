@@ -1,10 +1,10 @@
-// Arachiz Music — Service Worker para Soporte Offline y PWA (v4.1)
-const CACHE_NAME = "arachiz-music-v4.1";
+// Arachiz Music — Service Worker para Soporte Offline y PWA (v4.2)
+const CACHE_NAME = "arachiz-music-v4.2";
 const APP_SHELL = [
   "/",
   "/index.html",
-  "/style.css?v=4.1",
-  "/app.js?v=4.1",
+  "/style.css?v=4.2",
+  "/app.js?v=4.2",
   "/favicon.svg",
   "/manifest.json"
 ];
@@ -21,13 +21,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
+      return Promise.all(keys.map((key) => caches.delete(key)));
     })
   );
   self.clients.claim();

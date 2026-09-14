@@ -667,3 +667,67 @@ class MusicResolver:
                     }],
                     "total": 1,
                 }
+
+    @staticmethod
+    def search_youtube_tracks(query: str, ytdl_module, max_results: int = 8) -> Dict[str, Any]:
+        """Busca canciones reales en YouTube / YouTube Music usando yt-dlp y devuelve resultados completos."""
+        clean_q = query.strip()
+        ydl_opts = {
+            "extract_flat": True,
+            "skip_download": True,
+            "quiet": True,
+            "no_warnings": True,
+        }
+        try:
+            with ytdl_module.YoutubeDL(ydl_opts) as ydl:
+                search_query = f"ytsearch{max_results}:{clean_q}"
+                info = ydl.extract_info(search_query, download=False)
+                tracks = []
+                entries = info.get("entries", []) if info else []
+                for entry in entries:
+                    if not entry:
+                        continue
+                    duration_sec = int(entry.get("duration", 0) or 0)
+                    dur_str = f"{duration_sec // 60}:{duration_sec % 60:02d}" if duration_sec else "--:--"
+                    thumb = entry.get("thumbnail") or ""
+                    if not thumb and entry.get("thumbnails"):
+                        thumb = entry["thumbnails"][-1].get("url", "")
+                    video_url = (
+                        entry.get("webpage_url")
+                        or entry.get("url")
+                        or (f"https://www.youtube.com/watch?v={entry.get('id')}" if entry.get("id") else "")
+                    )
+                    title = entry.get("title") or "Canción"
+                    artist = entry.get("uploader") or entry.get("channel") or "YouTube"
+                    tracks.append({
+                        "id": entry.get("id"),
+                        "title": title,
+                        "artist": artist,
+                        "query": video_url or clean_q,
+                        "duration": dur_str,
+                        "cover": thumb,
+                        "source": "youtube",
+                        "direct_url": video_url,
+                    })
+                return {
+                    "type": "search_results",
+                    "title": f"Resultados para: {clean_q}",
+                    "cover": tracks[0]["cover"] if tracks else "",
+                    "tracks": tracks,
+                    "total": len(tracks),
+                }
+        except Exception as e:
+            return {
+                "type": "search_results",
+                "title": f"Búsqueda: {clean_q}",
+                "cover": "",
+                "tracks": [{
+                    "title": clean_q,
+                    "artist": "Búsqueda Manual",
+                    "query": clean_q,
+                    "duration": "--:--",
+                    "cover": "",
+                    "source": "manual",
+                }],
+                "total": 1,
+            }

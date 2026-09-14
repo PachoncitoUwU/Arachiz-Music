@@ -38,6 +38,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def add_no_cache_header(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.endswith((".html", ".js", ".css", "/")):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 
@@ -341,12 +350,62 @@ def stream_audio(track_id: str, request: Request):
 
 @app.get("/api/cover/{track_id}")
 def get_cover(track_id: str):
-    """Sirve la carátula oficial extraída de la pista o carpeta."""
+    """Sirve la carátula oficial extraída de la pista o carpeta, o un SVG Apple Liquid Glass dinámico."""
     res = library_manager.extract_cover_bytes(track_id)
-    if not res:
-        raise HTTPException(status_code=404, detail="Carátula no encontrada")
-    data, mime = res
-    return Response(content=data, media_type=mime)
+    if res:
+        data, mime = res
+        return Response(content=data, media_type=mime)
+
+    # Fallback: Generar carátula Apple Liquid Glass en SVG de alta fidelidad
+    track = library_manager.get_track_by_id(track_id) or {}
+    title = track.get("title", "Arachiz Music")[:25]
+    artist = track.get("artist", "Sound Studio")[:25]
+    
+    # Colores armónicos calculados por hash del título
+    hash_val = sum(ord(c) for c in (title + artist)) % 360
+    c1 = f"hsl({hash_val}, 75%, 32%)"
+    c2 = f"hsl({(hash_val + 40) % 360}, 85%, 20%)"
+    c3 = f"hsl({(hash_val + 80) % 360}, 65%, 15%)"
+
+    svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGrad" cx="30%" cy="25%" r="85%">
+      <stop offset="0%" stop-color="{c1}"/>
+      <stop offset="50%" stop-color="{c2}"/>
+      <stop offset="100%" stop-color="{c3}"/>
+    </radialGradient>
+    <linearGradient id="specular" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.45)"/>
+      <stop offset="40%" stop-color="rgba(255,255,255,0.08)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.4)"/>
+    </linearGradient>
+    <filter id="glassBlur">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <rect width="500" height="500" rx="32" fill="url(#bgGrad)"/>
+  <!-- Specular highlight rim -->
+  <rect width="496" height="496" x="2" y="2" rx="30" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+  
+  <!-- Disco de Vinilo Apple Glass -->
+  <circle cx="250" cy="230" r="150" fill="#0D0D11" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+  <circle cx="250" cy="230" r="130" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <circle cx="250" cy="230" r="110" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+  <circle cx="250" cy="230" r="90" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+  <circle cx="250" cy="230" r="70" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+  <circle cx="250" cy="230" r="50" fill="url(#specular)"/>
+  <circle cx="250" cy="230" r="24" fill="#0A84FF"/>
+  <circle cx="250" cy="230" r="8" fill="#FFFFFF"/>
+  
+  <!-- Icono Nota Musical Gloss -->
+  <path d="M260 215v-30c0-3 2-6 5-6l30-6c3 0 5 2 5 5v37m-40 0c-4-2-9-1-13 2-6 4-7 11-3 16s11 6 16 2c4-3 5-8 5-13v-37m35 0c-4-2-9-1-13 2-6 4-7 11-3 16s11 6 16 2c4-3 5-8 5-13v-37" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+  
+  <!-- Título y Artista -->
+  <text x="250" y="420" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif" font-size="22" font-weight="700" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.3">{title}</text>
+  <text x="250" y="450" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif" font-size="15" font-weight="500" fill="rgba(255,255,255,0.72)" text-anchor="middle">{artist}</text>
+</svg>'''
+    return Response(content=svg_content.encode("utf-8"), media_type="image/svg+xml")
 
 
 class UpdateCoverRequest(BaseModel):
@@ -697,30 +756,68 @@ async def analyze_url(req: AnalyzeRequest):
                     detail=data.get("error", "No se pudieron extraer las canciones de Spotify."),
                 )
 
+            # Deduplicar canciones idénticas en la playlist (mismo título y artista)
+            raw_tracks = data.get("tracks", [])
+            seen_keys = set()
+            unique_tracks = []
+            for t in raw_tracks:
+                norm_t = re.sub(r"[^\w\s]", "", (t.get("title") or "")).strip().lower()
+                norm_a = re.sub(r"[^\w\s]", "", (t.get("artist") or "")).strip().lower()
+                k = (norm_t, norm_a)
+                if k not in seen_keys:
+                    seen_keys.add(k)
+                    unique_tracks.append(t)
+            data["tracks"] = unique_tracks
+            data["total"] = len(unique_tracks)
+
             await broadcast_ws({
                 "event": "analyze_done",
-                "total": len(data.get("tracks", [])),
+                "total": len(unique_tracks),
             })
 
             return data
 
         elif MusicResolver.is_youtube_url(url):
             data = await asyncio.to_thread(MusicResolver.parse_youtube, url, yt_dlp)
+            if data and "tracks" in data:
+                raw_tracks = data.get("tracks", [])
+                seen_keys = set()
+                unique_tracks = []
+                for t in raw_tracks:
+                    norm_t = re.sub(r"[^\w\s]", "", (t.get("title") or "")).strip().lower()
+                    norm_a = re.sub(r"[^\w\s]", "", (t.get("artist") or "")).strip().lower()
+                    k = (norm_t, norm_a)
+                    if k not in seen_keys:
+                        seen_keys.add(k)
+                        unique_tracks.append(t)
+                data["tracks"] = unique_tracks
+                data["total"] = len(unique_tracks)
             return data
         else:
-            return {
-                "type": "search",
-                "title": "Búsqueda Manual",
-                "cover": "",
-                "tracks": [{
-                    "title": url,
-                    "artist": "Búsqueda",
-                    "query": url,
-                    "duration": "--:--",
-                    "cover": "",
-                    "source": "manual",
-                }],
-            }
+            # Búsqueda real de canciones en YouTube Music con metadatos completos
+            await broadcast_ws({
+                "event": "analyze_started",
+                "message": f"Buscando canciones afines a '{url}'...",
+            })
+            data = await asyncio.to_thread(MusicResolver.search_youtube_tracks, url, yt_dlp, 8)
+            if data and "tracks" in data:
+                raw_tracks = data.get("tracks", [])
+                seen_keys = set()
+                unique_tracks = []
+                for t in raw_tracks:
+                    norm_t = re.sub(r"[^\w\s]", "", (t.get("title") or "")).strip().lower()
+                    norm_a = re.sub(r"[^\w\s]", "", (t.get("artist") or "")).strip().lower()
+                    k = (norm_t, norm_a)
+                    if k not in seen_keys:
+                        seen_keys.add(k)
+                        unique_tracks.append(t)
+                data["tracks"] = unique_tracks
+                data["total"] = len(unique_tracks)
+            await broadcast_ws({
+                "event": "analyze_done",
+                "total": len(data.get("tracks", [])),
+            })
+            return data
     except HTTPException:
         raise
     except Exception as e:
