@@ -490,6 +490,7 @@
                 </div>
               </div>
               <button id="btnCopyLyrics" class="btn-icon-subtle" title="Copiar letra"><i class="fa-regular fa-clipboard"></i></button>
+              <button id="btnOpenTrackEditor" class="btn-icon-subtle" title="Editar canción (letra, portada, ajustes)"><i class="fa-solid fa-pen-to-square"></i></button>
             </div>
           </div>
 
@@ -1482,6 +1483,161 @@
               <i class="fa-solid fa-scissors"></i>
               <span>Abrir Stems & Cortes</span>
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- BOTTOM SHEET: EDITOR DE CANCIÓN (Letra, Portada, Ajustes)             -->
+    <!-- ===================================================================== -->
+    <div id="trackEditorSheet" class="bottom-sheet-backdrop hidden">
+      <div class="bottom-sheet-panel glass-panel track-editor-panel" id="trackEditorSheetPanel">
+        <div class="sheet-drag-handle-bar">
+          <div class="sheet-drag-pill"></div>
+        </div>
+        <div class="sheet-header">
+          <div class="sheet-title-group">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <h3>Editar Canción</h3>
+          </div>
+          <button id="btnCloseTrackEditor" class="btn-icon-subtle" title="Cerrar editor">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Track Info Mini Preview -->
+        <div class="editor-track-preview">
+          <img id="editorTrackCover" class="editor-cover-mini" src="" alt="Cover" />
+          <div class="editor-track-info">
+            <strong id="editorTrackTitle">—</strong>
+            <span id="editorTrackArtist">—</span>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="editor-tabs">
+          <button class="editor-tab active" data-tab="lyrics">
+            <i class="fa-solid fa-quote-left"></i> Letra
+          </button>
+          <button class="editor-tab" data-tab="cover">
+            <i class="fa-solid fa-image"></i> Portada
+          </button>
+          <button class="editor-tab" data-tab="settings">
+            <i class="fa-solid fa-sliders"></i> Ajustes
+          </button>
+        </div>
+
+        <div class="editor-tab-content">
+          <!-- === TAB: LETRA === -->
+          <div class="editor-pane active" id="editorPaneLyrics">
+            <!-- Warning for wrong lyrics -->
+            <div id="editorLyricsWarning" class="editor-warning hidden">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <span id="editorLyricsWarningText">Esta letra podría no corresponder a esta canción.</span>
+            </div>
+
+            <div class="editor-lyrics-status">
+              <span id="editorLyricsSource">Sin letra</span>
+            </div>
+
+            <textarea id="editorLyricsTextarea" class="editor-textarea" placeholder="Escribe o pega la letra de la canción aquí...
+
+Ejemplo:
+Verso 1 de la canción
+Verso 2 de la canción
+...
+
+O pega formato LRC:
+[00:12.50]Primer verso
+[00:16.30]Segundo verso" rows="10"></textarea>
+
+            <div class="editor-lyrics-actions">
+              <button id="editorBtnSaveLyrics" class="btn-pill-primary btn-sm">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar Letra
+              </button>
+              <button id="editorBtnSyncAi" class="btn-pill-secondary btn-sm">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Sincronizar con IA
+              </button>
+              <button id="editorBtnSearchLyrics" class="btn-pill-secondary btn-sm">
+                <i class="fa-solid fa-magnifying-glass"></i> Buscar Automáticamente
+              </button>
+              <button id="editorBtnDeleteLyrics" class="btn-pill-danger btn-sm">
+                <i class="fa-solid fa-trash"></i> Borrar Letra
+              </button>
+            </div>
+          </div>
+
+          <!-- === TAB: PORTADA === -->
+          <div class="editor-pane" id="editorPaneCover">
+            <div class="editor-cover-preview-box">
+              <img id="editorCoverPreview" class="editor-cover-large" src="" alt="Portada actual" />
+            </div>
+
+            <div class="editor-cover-input-group">
+              <label for="editorCoverUrlInput">URL de nueva portada:</label>
+              <div class="editor-url-row">
+                <input type="text" id="editorCoverUrlInput" class="editor-input" placeholder="https://... o pega una URL de imagen" />
+                <button id="editorBtnApplyCoverUrl" class="btn-pill-primary btn-sm">
+                  <i class="fa-solid fa-check"></i> Aplicar
+                </button>
+              </div>
+            </div>
+
+            <div class="editor-cover-input-group">
+              <label for="editorCoverFileInput">O sube una imagen:</label>
+              <input type="file" id="editorCoverFileInput" class="editor-file-input" accept="image/*" />
+            </div>
+          </div>
+
+          <!-- === TAB: AJUSTES === -->
+          <div class="editor-pane" id="editorPaneSettings">
+            <!-- Offset de letras -->
+            <div class="sheet-item-card">
+              <div class="sheet-item-lead">
+                <i class="fa-solid fa-clock"></i>
+                <div>
+                  <strong>Desfase de Letras</strong>
+                  <p>Ajusta la sincronización (+/- segundos)</p>
+                </div>
+              </div>
+              <div class="sheet-offset-buttons">
+                <button id="editorBtnLyricMinus" class="btn-pill-secondary btn-sm">-0.5s</button>
+                <span id="editorLyricOffsetDisplay" class="lyric-offset-badge tabular">0.0s</span>
+                <button id="editorBtnLyricPlus" class="btn-pill-secondary btn-sm">+0.5s</button>
+                <button id="editorBtnLyricReset" class="btn-pill-secondary btn-sm">Restablecer</button>
+              </div>
+            </div>
+
+            <!-- Crossfade -->
+            <div class="sheet-item-card">
+              <div class="sheet-item-lead">
+                <i class="fa-solid fa-arrows-split-up-and-left"></i>
+                <div>
+                  <strong>Crossfade entre canciones</strong>
+                  <p>Fusión sin cortes al terminar cada canción</p>
+                </div>
+              </div>
+              <select id="editorCrossfadeSelect" class="apple-clean-dropdown">
+                <option value="0">Sin Crossfade (0s)</option>
+                <option value="2">Suave (2s)</option>
+                <option value="4" selected>Estándar (4s)</option>
+                <option value="6">Profundo (6s)</option>
+                <option value="8">Cinemático (8s)</option>
+                <option value="12">Máximo (12s)</option>
+              </select>
+            </div>
+
+            <!-- Track Info -->
+            <div class="sheet-item-card">
+              <div class="sheet-item-lead">
+                <i class="fa-solid fa-circle-info"></i>
+                <div>
+                  <strong>Información del Track</strong>
+                  <p id="editorTrackMeta">—</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -7282,7 +7282,296 @@ select, option {
   display: flex;
   align-items: center;
   gap: 8px;
-/* ── Microinteracciones y Tap Feedback Global (Emil Kowalski / Apple Design Tokens) ── */
+}
+
+/* ── TRACK EDITOR PANEL (Editar Canción) ── */
+.track-editor-panel {
+  max-width: 600px;
+  max-height: 90vh;
+}
+
+.editor-track-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4px;
+}
+.editor-cover-mini {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+.editor-track-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.editor-track-info strong {
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.editor-track-info span {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* Editor Tabs */
+.editor-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 12px 0 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.editor-tab {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.editor-tab:hover {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+.editor-tab.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(10, 132, 255, 0.35);
+}
+.editor-tab:active {
+  transform: scale(0.96) !important;
+}
+.editor-tab i {
+  font-size: 13px;
+}
+
+/* Editor Tab Content */
+.editor-tab-content {
+  padding-top: 14px;
+}
+.editor-pane {
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  animation: editorFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.editor-pane.active {
+  display: flex;
+}
+@keyframes editorFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Warning banner */
+.editor-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 159, 10, 0.15);
+  border: 1px solid rgba(255, 159, 10, 0.4);
+  border-radius: 12px;
+  color: #FF9F0A;
+  font-size: 12px;
+  font-weight: 600;
+  animation: editorFadeIn 0.3s ease;
+}
+.editor-warning.hidden {
+  display: none;
+}
+.editor-warning i {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* Lyrics status */
+.editor-lyrics-status {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 0 2px;
+}
+.editor-lyrics-status span {
+  font-weight: 600;
+}
+
+/* Textarea */
+.editor-textarea {
+  width: 100%;
+  min-height: 180px;
+  max-height: 320px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-glass);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.editor-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+}
+.editor-textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  font-size: 12px;
+}
+
+/* Lyrics Actions */
+.editor-lyrics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Danger button */
+.btn-pill-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 69, 58, 0.4);
+  background: rgba(255, 69, 58, 0.12);
+  color: #FF453A;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-pill-danger:hover {
+  background: rgba(255, 69, 58, 0.25);
+  border-color: rgba(255, 69, 58, 0.6);
+}
+.btn-pill-danger:active {
+  transform: scale(0.96);
+}
+
+/* Cover tab */
+.editor-cover-preview-box {
+  display: flex;
+  justify-content: center;
+  padding: 14px 0;
+}
+.editor-cover-large {
+  width: 180px;
+  height: 180px;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.editor-cover-large:hover {
+  transform: scale(1.03);
+}
+
+.editor-cover-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.editor-cover-input-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.editor-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.editor-input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-glass);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.editor-input:focus {
+  border-color: var(--accent);
+}
+.editor-file-input {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.editor-file-input::file-selector-button {
+  padding: 8px 16px;
+  border-radius: 50px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-glass);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 10px;
+}
+.editor-file-input::file-selector-button:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Lyrics warning banner in main lyrics area */
+.lyrics-confidence-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 0 0 8px;
+  background: rgba(255, 159, 10, 0.12);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  border-radius: 12px;
+  color: #FF9F0A;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.lyrics-confidence-warning:hover {
+  background: rgba(255, 159, 10, 0.2);
+}
+.lyrics-confidence-warning i {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.lyrics-confidence-warning .lcw-fix {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
 :root {
   --ease-spring-snappy: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-spring-smooth: cubic-bezier(0.16, 1, 0.3, 1);

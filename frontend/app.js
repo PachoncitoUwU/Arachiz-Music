@@ -17,6 +17,7 @@ let repeatMode = "none"; // 'none' | 'all' | 'one'
 let crossfadeDuration = 4; // segundos (0, 2, 4, 6, 8, 12)
 let isCrossfading = false;
 let currentLyrics = [];
+let currentLyricsData = null; // Stores full lyrics API response metadata
 let activeLyricIndex = -1;
 let isUserSeeking = false;
 let activeMood = "workout";
@@ -68,6 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMobileModal();
   setupFloatingAiAssistant();
   setupMobileReferenceViews();
+  setupTrackEditorSheet();
 
   // Iniciar en vista Reproductor
   switchView("player");
@@ -834,6 +836,11 @@ async function fetchAndDisplayLyrics(track) {
   const flow = document.getElementById("lyricsLinesFlow");
   const badge = document.getElementById("lyricsStatusBadge");
   const btnAi = document.getElementById("btnAiTranscribe");
+  const scrollContainer = document.getElementById("lyricsScrollContainer");
+
+  // Remove any existing confidence warning
+  const existingWarning = scrollContainer?.querySelector(".lyrics-confidence-warning");
+  if (existingWarning) existingWarning.remove();
 
   if (placeholder) placeholder.classList.remove("hidden");
   if (flow) flow.classList.add("hidden");
@@ -848,13 +855,29 @@ async function fetchAndDisplayLyrics(track) {
     const res = await fetch(`${API_URL}/api/lyrics?${params}`);
     if (res.ok) {
       const data = await res.json();
+      currentLyricsData = data; // Store full response for editor
+
       if (data.lines && data.lines.length > 0) {
         currentLyrics = data.lines;
         renderLyricsLines(data.lines);
+
+        // Show confidence warning for fuzzy-matched lyrics
+        if (data.confidence === "low" && scrollContainer) {
+          const warnDiv = document.createElement("div");
+          warnDiv.className = "lyrics-confidence-warning";
+          warnDiv.innerHTML = `
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Esta letra podría no ser de esta canción (encontrada como: "${escapeHtml(data.matched_title || '')}")</span>
+            <span class="lcw-fix">Corregir →</span>
+          `;
+          warnDiv.addEventListener("click", () => openTrackEditor("lyrics"));
+          scrollContainer.insertBefore(warnDiv, scrollContainer.firstChild);
+        }
+
         if (badge) {
           if (data.synced) {
             badge.textContent = data.source ? `Sincronizada (${data.source})` : "Sincronizada";
-            badge.style.color = "#30D158";
+            badge.style.color = data.confidence === "low" ? "#FF9F0A" : "#30D158";
           } else {
             badge.textContent = data.source ? `Texto Plano (${data.source})` : "Texto Plano";
             badge.style.color = "#FF9F0A";
@@ -869,6 +892,7 @@ async function fetchAndDisplayLyrics(track) {
   } catch (e) {}
 
   currentLyrics = [];
+  currentLyricsData = null;
   if (placeholder) {
     placeholder.innerHTML = `
       <div class="lyrics-spin-pulse"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
@@ -4932,5 +4956,461 @@ async function triggerDuplicateCleanup() {
     }
   } catch (err) {
     showError("Error", err.message);
+  }
+}
+
+// ── TRACK EDITOR PANEL (Editar Canción: Letra, Portada, Ajustes) ─────────────
+
+function openTrackEditor(tab = "lyrics") {
+  const sheet = document.getElementById("trackEditorSheet");
+  if (!sheet) return;
+
+  // Populate track info
+  const coverImg = document.getElementById("editorTrackCover");
+  const titleEl = document.getElementById("editorTrackTitle");
+  const artistEl = document.getElementById("editorTrackArtist");
+  const coverPreview = document.getElementById("editorCoverPreview");
+  const metaEl = document.getElementById("editorTrackMeta");
+  const textarea = document.getElementById("editorLyricsTextarea");
+  const sourceEl = document.getElementById("editorLyricsSource");
+  const warningEl = document.getElementById("editorLyricsWarning");
+  const warningTextEl = document.getElementById("editorLyricsWarningText");
+  const offsetDisp = document.getElementById("editorLyricOffsetDisplay");
+
+  if (activeTrack) {
+    const coverSrc = getTrackCoverSrc(activeTrack);
+    if (coverImg) coverImg.src = coverSrc;
+    if (coverPreview) coverPreview.src = coverSrc;
+    if (titleEl) titleEl.textContent = activeTrack.title || "\u2014";
+    if (artistEl) artistEl.textContent = activeTrack.artist || "\u2014";
+    if (metaEl) {
+      const dur = activeTrack.duration_seconds ? `${Math.floor(activeTrack.duration_seconds / 60)}:${String(Math.floor(activeTrack.duration_seconds % 60)).padStart(2, '0')}` : "\u2014";
+      metaEl.textContent = `Duraci\u00f3n: ${dur} \u2022 Formato: ${(activeTrack.format || "mp3").toUpperCase()} \u2022 ID: ${activeTrack.id?.substring(0, 8) || "\u2014"}`;
+    }
+  }
+
+  // Populate lyrics textarea
+  if (textarea) {
+    if (currentLyricsData && currentLyricsData.plain_text) {
+      textarea.value = currentLyricsData.plain_text;
+    } else if (currentLyricsData && currentLyricsData.raw_lrc) {
+      textarea.value = currentLyricsData.raw_lrc;
+    } else if (currentLyrics.length > 0) {
+      textarea.value = currentLyrics.map(l => l.text).join("\n");
+    } else {
+      textarea.value = "";
+    }
+  }
+
+  // Lyrics source info
+  if (sourceEl && currentLyricsData) {
+    const src = currentLyricsData.source || "none";
+    const synced = currentLyricsData.synced ? "\u2705 Sincronizada" : "\uD83D\uDCDD Texto plano";
+    sourceEl.textContent = `${synced} \u2014 Fuente: ${src}`;
+  } else if (sourceEl) {
+    sourceEl.textContent = "Sin letra cargada";
+  }
+
+  // Warning for wrong lyrics
+  if (warningEl && warningTextEl) {
+    if (currentLyricsData && currentLyricsData.confidence === "low") {
+      warningTextEl.textContent = `Esta letra podr\u00eda no ser correcta. Fue encontrada como: "${currentLyricsData.matched_title || '?'}" de "${currentLyricsData.matched_artist || '?'}"`;
+      warningEl.classList.remove("hidden");
+    } else {
+      warningEl.classList.add("hidden");
+    }
+  }
+
+  // Offset display
+  if (offsetDisp) {
+    offsetDisp.textContent = `${trackLyricsOffset >= 0 ? "+" : ""}${trackLyricsOffset.toFixed(1)}s`;
+  }
+
+  // Crossfade sync
+  const editorCrossfade = document.getElementById("editorCrossfadeSelect");
+  if (editorCrossfade) editorCrossfade.value = crossfadeDuration.toString();
+
+  // Switch to requested tab
+  const tabs = sheet.querySelectorAll(".editor-tab");
+  const panes = sheet.querySelectorAll(".editor-pane");
+  tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+  panes.forEach(p => {
+    const paneTab = p.id.replace("editorPane", "").toLowerCase();
+    p.classList.toggle("active", paneTab === tab);
+  });
+
+  // Show sheet
+  sheet.classList.remove("hidden");
+}
+
+function closeTrackEditor() {
+  const sheet = document.getElementById("trackEditorSheet");
+  if (sheet) sheet.classList.add("hidden");
+}
+
+function setupTrackEditorSheet() {
+  const sheet = document.getElementById("trackEditorSheet");
+  const btnOpen = document.getElementById("btnOpenTrackEditor");
+  const btnClose = document.getElementById("btnCloseTrackEditor");
+
+  if (!sheet) return;
+
+  // Open / Close
+  if (btnOpen) btnOpen.addEventListener("click", () => openTrackEditor("lyrics"));
+  if (btnClose) btnClose.addEventListener("click", closeTrackEditor);
+  sheet.addEventListener("click", (e) => {
+    if (e.target === sheet) closeTrackEditor();
+  });
+
+  // Tab switching
+  const tabs = sheet.querySelectorAll(".editor-tab");
+  const panes = sheet.querySelectorAll(".editor-pane");
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+      tabs.forEach(t => t.classList.toggle("active", t === tab));
+      panes.forEach(p => {
+        const paneTab = p.id.replace("editorPane", "").toLowerCase();
+        p.classList.toggle("active", paneTab === target);
+      });
+    });
+  });
+
+  // ── LYRICS TAB ──
+
+  // Save Lyrics
+  const btnSave = document.getElementById("editorBtnSaveLyrics");
+  if (btnSave) {
+    btnSave.addEventListener("click", async () => {
+      if (!activeTrack || !activeTrack.id) {
+        showError("Aviso", "No hay canci\u00f3n activa.");
+        return;
+      }
+      const textarea = document.getElementById("editorLyricsTextarea");
+      const text = textarea ? textarea.value.trim() : "";
+      if (!text) {
+        showError("Aviso", "Escribe o pega la letra primero.");
+        return;
+      }
+
+      btnSave.disabled = true;
+      btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+
+      try {
+        const res = await fetch(`${API_URL}/api/lyrics/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ track_id: activeTrack.id, text: text }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("Letra Guardada", data.message || "Letra guardada exitosamente.");
+          if (data.lines && data.lines.length > 0) {
+            currentLyrics = data.lines;
+            currentLyricsData = data;
+            renderLyricsLines(data.lines);
+            const badge = document.getElementById("lyricsStatusBadge");
+            if (badge) {
+              badge.textContent = "Guardada (" + (data.source || "manual") + ")";
+              badge.style.color = "#30D158";
+            }
+          }
+        } else {
+          showError("Error", data.error || "No se pudo guardar la letra.");
+        }
+      } catch (err) {
+        showError("Error", err.message);
+      } finally {
+        btnSave.disabled = false;
+        btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Letra';
+      }
+    });
+  }
+
+  // Sync User Text with AI
+  const btnSyncAi = document.getElementById("editorBtnSyncAi");
+  if (btnSyncAi) {
+    btnSyncAi.addEventListener("click", async () => {
+      if (!activeTrack || !activeTrack.id) {
+        showError("Aviso", "No hay canci\u00f3n activa.");
+        return;
+      }
+      const textarea = document.getElementById("editorLyricsTextarea");
+      const text = textarea ? textarea.value.trim() : "";
+      if (!text) {
+        showError("Aviso", "Escribe o pega la letra primero para que la IA la sincronice.");
+        return;
+      }
+
+      btnSyncAi.disabled = true;
+      btnSyncAi.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sincronizando...';
+      showToast("Sincronizaci\u00f3n IA", 'Alineando tu letra con el audio de "' + (activeTrack.title || 'canci\u00f3n') + '"...');
+
+      try {
+        const res = await fetch(`${API_URL}/api/lyrics/sync-text`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ track_id: activeTrack.id, text: text }),
+        });
+        const data = await res.json();
+        if (data.success && data.lines && data.lines.length > 0) {
+          currentLyrics = data.lines;
+          currentLyricsData = data;
+          renderLyricsLines(data.lines);
+          if (activeAudio) syncLyricsWithTime(activeAudio.currentTime);
+
+          const badge = document.getElementById("lyricsStatusBadge");
+          if (badge) {
+            badge.textContent = "Tu Letra + IA Sync";
+            badge.style.color = "#30D158";
+          }
+          showToast("\u00a1Sincronizada!", data.message || "Tu letra fue sincronizada con el audio.");
+
+          // Update textarea with the synced LRC
+          if (textarea && data.raw_lrc) textarea.value = data.raw_lrc;
+
+          // Update source display
+          const sourceEl = document.getElementById("editorLyricsSource");
+          if (sourceEl) sourceEl.textContent = "\u2705 Sincronizada \u2014 Fuente: Tu texto + Whisper IA";
+
+          // Hide warning
+          const warningEl = document.getElementById("editorLyricsWarning");
+          if (warningEl) warningEl.classList.add("hidden");
+        } else {
+          showError("Sincronizaci\u00f3n IA", data.error || "No se pudo sincronizar.");
+        }
+      } catch (err) {
+        showError("Error", err.message);
+      } finally {
+        btnSyncAi.disabled = false;
+        btnSyncAi.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Sincronizar con IA';
+      }
+    });
+  }
+
+  // Search lyrics automatically
+  const btnSearch = document.getElementById("editorBtnSearchLyrics");
+  if (btnSearch) {
+    btnSearch.addEventListener("click", async () => {
+      if (!activeTrack || !activeTrack.id) {
+        showError("Aviso", "No hay canci\u00f3n activa.");
+        return;
+      }
+      btnSearch.disabled = true;
+      btnSearch.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Buscando...';
+      showToast("Buscando letra", 'Buscando en internet para "' + (activeTrack.title || 'canci\u00f3n') + '"...');
+
+      try {
+        // Delete existing to force fresh search
+        await fetch(`${API_URL}/api/lyrics/${activeTrack.id}`, { method: "DELETE" });
+        // Fetch fresh
+        await fetchAndDisplayLyrics(activeTrack);
+        // Update editor textarea
+        const textarea = document.getElementById("editorLyricsTextarea");
+        if (textarea && currentLyricsData) {
+          if (currentLyricsData.plain_text) {
+            textarea.value = currentLyricsData.plain_text;
+          } else if (currentLyricsData.raw_lrc) {
+            textarea.value = currentLyricsData.raw_lrc;
+          } else if (currentLyrics.length > 0) {
+            textarea.value = currentLyrics.map(function(l) { return l.text; }).join("\n");
+          }
+        }
+        showToast("B\u00fasqueda completada", currentLyrics.length > 0 ? "Letra encontrada." : "No se encontr\u00f3 letra.");
+      } catch (err) {
+        showError("Error", err.message);
+      } finally {
+        btnSearch.disabled = false;
+        btnSearch.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Buscar Autom\u00e1ticamente';
+      }
+    });
+  }
+
+  // Delete lyrics
+  const btnDelete = document.getElementById("editorBtnDeleteLyrics");
+  if (btnDelete) {
+    btnDelete.addEventListener("click", async () => {
+      if (!activeTrack || !activeTrack.id) {
+        showError("Aviso", "No hay canci\u00f3n activa.");
+        return;
+      }
+
+      btnDelete.disabled = true;
+      btnDelete.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Borrando...';
+
+      try {
+        const res = await fetch(`${API_URL}/api/lyrics/${activeTrack.id}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("Letra eliminada", data.message || "Letra borrada exitosamente.");
+          currentLyrics = [];
+          currentLyricsData = null;
+          const textarea = document.getElementById("editorLyricsTextarea");
+          if (textarea) textarea.value = "";
+          const sourceEl = document.getElementById("editorLyricsSource");
+          if (sourceEl) sourceEl.textContent = "Sin letra cargada";
+          const warningEl = document.getElementById("editorLyricsWarning");
+          if (warningEl) warningEl.classList.add("hidden");
+
+          // Clear main lyrics view
+          const flow = document.getElementById("lyricsLinesFlow");
+          const placeholder = document.getElementById("lyricsPlaceholder");
+          const badge = document.getElementById("lyricsStatusBadge");
+          if (flow) { flow.innerHTML = ""; flow.classList.add("hidden"); }
+          if (placeholder) {
+            placeholder.innerHTML = '<div class="lyrics-spin-pulse"><i class="fa-solid fa-pen-to-square"></i></div><h3>Letra eliminada</h3><p>Escribe una nueva letra en el editor o busca autom\u00e1ticamente.</p>';
+            placeholder.classList.remove("hidden");
+          }
+          if (badge) {
+            badge.textContent = "Eliminada";
+            badge.style.color = "#8E8E93";
+          }
+
+          // Remove confidence warning
+          var scrollContainer = document.getElementById("lyricsScrollContainer");
+          var warn = scrollContainer ? scrollContainer.querySelector(".lyrics-confidence-warning") : null;
+          if (warn) warn.remove();
+        } else {
+          showError("Error", data.error || "No se pudo eliminar.");
+        }
+      } catch (err) {
+        showError("Error", err.message);
+      } finally {
+        btnDelete.disabled = false;
+        btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i> Borrar Letra';
+      }
+    });
+  }
+
+  // ── COVER TAB ──
+
+  // Apply cover from URL
+  var btnApplyCover = document.getElementById("editorBtnApplyCoverUrl");
+  if (btnApplyCover) {
+    btnApplyCover.addEventListener("click", async () => {
+      if (!activeTrack || !activeTrack.id) {
+        showError("Aviso", "No hay canci\u00f3n activa.");
+        return;
+      }
+      var urlInput = document.getElementById("editorCoverUrlInput");
+      var coverUrl = urlInput ? urlInput.value.trim() : "";
+      if (!coverUrl) {
+        showError("Aviso", "Introduce una URL de imagen.");
+        return;
+      }
+
+      btnApplyCover.disabled = true;
+      btnApplyCover.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+      try {
+        const res = await fetch(`${API_URL}/api/track/cover`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ track_id: activeTrack.id, cover_url: coverUrl }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          var newSrc = API_URL + data.cover_url;
+          var coverPreview = document.getElementById("editorCoverPreview");
+          var coverMini = document.getElementById("editorTrackCover");
+          if (coverPreview) coverPreview.src = newSrc;
+          if (coverMini) coverMini.src = newSrc;
+
+          activeTrack.cover_url = data.cover_url;
+          document.querySelectorAll("#playerCoverArt, #mobileCoverArt, #pbarCoverImg").forEach(function(img) {
+            if (img) img.src = newSrc;
+          });
+
+          showToast("Portada Actualizada", "La car\u00e1tula fue cambiada exitosamente.");
+          if (urlInput) urlInput.value = "";
+        } else {
+          showError("Error", data.detail || "No se pudo actualizar la portada.");
+        }
+      } catch (err) {
+        showError("Error", err.message);
+      } finally {
+        btnApplyCover.disabled = false;
+        btnApplyCover.innerHTML = '<i class="fa-solid fa-check"></i> Aplicar';
+      }
+    });
+  }
+
+  // Upload cover from file
+  var fileInput = document.getElementById("editorCoverFileInput");
+  if (fileInput) {
+    fileInput.addEventListener("change", async function(e) {
+      var file = e.target.files ? e.target.files[0] : null;
+      if (!file || !activeTrack || !activeTrack.id) return;
+
+      var reader = new FileReader();
+      reader.onload = async function(ev) {
+        var base64 = ev.target.result;
+        try {
+          const res = await fetch(`${API_URL}/api/track/cover`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ track_id: activeTrack.id, cover_url: base64 }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            var newSrc = API_URL + data.cover_url;
+            var coverPreview = document.getElementById("editorCoverPreview");
+            var coverMini = document.getElementById("editorTrackCover");
+            if (coverPreview) coverPreview.src = newSrc;
+            if (coverMini) coverMini.src = newSrc;
+            activeTrack.cover_url = data.cover_url;
+            document.querySelectorAll("#playerCoverArt, #mobileCoverArt, #pbarCoverImg").forEach(function(img) {
+              if (img) img.src = newSrc;
+            });
+            showToast("Portada Actualizada", "Imagen subida y aplicada exitosamente.");
+          } else {
+            showError("Error", data.detail || "No se pudo actualizar la portada.");
+          }
+        } catch (err) {
+          showError("Error", err.message);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ── SETTINGS TAB ──
+
+  // Offset controls
+  var eBtnMinus = document.getElementById("editorBtnLyricMinus");
+  var eBtnPlus = document.getElementById("editorBtnLyricPlus");
+  var eBtnReset = document.getElementById("editorBtnLyricReset");
+  var eDisp = document.getElementById("editorLyricOffsetDisplay");
+
+  var updateEditorOffset = function() {
+    var txt = (trackLyricsOffset >= 0 ? "+" : "") + trackLyricsOffset.toFixed(1) + "s";
+    if (eDisp) eDisp.textContent = txt;
+    var sDisp = document.getElementById("sheetLyricOffsetDisplay");
+    var mainDisp = document.getElementById("lyricOffsetDisplay");
+    if (sDisp) sDisp.textContent = txt;
+    if (mainDisp) mainDisp.textContent = txt;
+    if (activeAudio) syncLyricsWithTime(activeAudio.currentTime);
+  };
+
+  if (eBtnMinus) eBtnMinus.addEventListener("click", function() { trackLyricsOffset = Math.round((trackLyricsOffset - 0.5) * 10) / 10; updateEditorOffset(); });
+  if (eBtnPlus) eBtnPlus.addEventListener("click", function() { trackLyricsOffset = Math.round((trackLyricsOffset + 0.5) * 10) / 10; updateEditorOffset(); });
+  if (eBtnReset) eBtnReset.addEventListener("click", function() { trackLyricsOffset = 0.0; updateEditorOffset(); });
+
+  // Crossfade in editor
+  var editorCrossfade = document.getElementById("editorCrossfadeSelect");
+  var sheetCrossfade2 = document.getElementById("sheetCrossfadeSelect");
+  var settingsCrossfade2 = document.getElementById("settingsCrossfadeSelect");
+
+  if (editorCrossfade) {
+    editorCrossfade.value = crossfadeDuration.toString();
+    editorCrossfade.addEventListener("change", function(e) {
+      crossfadeDuration = parseInt(e.target.value) || 0;
+      localStorage.setItem("arachiz_crossfade_duration", crossfadeDuration);
+      if (sheetCrossfade2) sheetCrossfade2.value = e.target.value;
+      if (settingsCrossfade2) settingsCrossfade2.value = e.target.value;
+      showToast("Crossfade", "Transici\u00f3n configurada en " + crossfadeDuration + "s");
+    });
   }
 }

@@ -279,6 +279,17 @@ class LyricsManager:
                     items = s_res.json()
                     for it in items:
                         if it.get("syncedLyrics"):
+                            # Validar similitud del resultado fuzzy contra el título solicitado
+                            returned_title = cls._clean_text_for_match(it.get("trackName", ""))
+                            requested_title = cls._clean_text_for_match(clean_title)
+                            title_similarity = SequenceMatcher(None, requested_title, returned_title).ratio()
+                            
+                            returned_artist = cls._clean_text_for_match(it.get("artistName", ""))
+                            requested_artist = cls._clean_text_for_match(first_artist)
+                            artist_similarity = SequenceMatcher(None, requested_artist, returned_artist).ratio() if requested_artist else 1.0
+                            
+                            confidence = "high" if (title_similarity > 0.6 and artist_similarity > 0.4) else "low"
+                            
                             parsed = cls.parse_lrc(it["syncedLyrics"], offset_seconds=offset)
                             cls._save_lrc_cache(filepath, it["syncedLyrics"])
                             return {
@@ -288,6 +299,9 @@ class LyricsManager:
                                 "raw_lrc": it["syncedLyrics"],
                                 "title": it.get("trackName", title),
                                 "artist": it.get("artistName", artist),
+                                "confidence": confidence,
+                                "matched_title": it.get("trackName", ""),
+                                "matched_artist": it.get("artistName", ""),
                             }
             except Exception:
                 pass
@@ -554,3 +568,153 @@ class LyricsManager:
     def transcribe_with_ai(cls, filepath: str) -> Dict[str, Any]:
         """Alias de compatibilidad hacia smart_sync_with_ai."""
         return cls.smart_sync_with_ai(filepath)
+
+    @classmethod
+    def save_manual_lyrics(cls, filepath: str, text: str) -> Dict[str, Any]:
+        """
+        Guarda una letra proporcionada manualmente por el usuario.
+        Si el texto tiene formato LRC ([mm:ss.xx]...) lo guarda directo.
+        Si es texto plano, lo guarda con timestamps estimados.
+        """
+        if not filepath or not os.path.exists(filepath):
+            return {"success": False, "error": "Archivo de audio no encontrado"}
+
+        if not text or not text.strip():
+            return {"success": False, "error": "El texto de la letra está vacío"}
+
+        lrc_path = os.path.splitext(filepath)[0] + ".lrc"
+
+        # Detectar si ya es formato LRC
+        lrc_pattern = re.compile(r"\[\d{1,2}:\d{1,2}(?:\.\d{1,3})?\]")
+        is_lrc_format = bool(lrc_pattern.search(text))
+
+        if is_lrc_format:
+            # Guardar directamente como LRC
+            with open(lrc_path, "w", encoding="utf-8") as f:
+                f.write(text.strip())
+            parsed = cls.parse_lrc(text)
+            return {
+                "success": True,
+                "synced": True,
+                "lines": parsed,
+                "raw_lrc": text.strip(),
+                "source": "manual_lrc",
+                "message": "Letra LRC guardada exitosamente.",
+            }
+        else:
+            # Texto plano: guardar con timestamps estimados (~3.5s por línea)
+            lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+            lrc_lines = []
+            parsed = []
+            for i, line in enumerate(lines):
+                t = round(i * 3.5, 2)
+                m = int(t // 60)
+                s = t % 60
+                lrc_lines.append(f"[{m:02d}:{s:05.2f}]{line}")
+                parsed.append({"time": t, "text": line})
+
+            raw_lrc = "\n".join(lrc_lines)
+            with open(lrc_path, "w", encoding="utf-8") as f:
+                f.write(raw_lrc)
+
+            return {
+                "success": True,
+                "synced": True,
+                "lines": parsed,
+                "raw_lrc": raw_lrc,
+                "source": "manual_plain",
+                "message": "Letra guardada con timestamps estimados. Usa 'Sincronizar con IA' para alinearla mejor.",
+                "can_sync_ai": True,
+            }
+
+    @classmethod
+    def sync_user_text_with_ai(cls, filepath: str, user_text: str, title: str = "", artist: str = "", duration: float = 0.0) -> Dict[str, Any]:
+        """
+        Sincroniza texto proporcionado por el usuario (no buscado en internet)
+        con las marcas de tiempo del audio usando Whisper IA.
+        """
+        if not filepath or not os.path.exists(filepath):
+            return {"success": False, "error": "Archivo de audio no encontrado"}
+
+        if not user_text or not user_text.strip():
+            return {"success": False, "error": "El texto de la letra está vacío"}
+
+        # Extraer audio temporal a WAV 16kHz
+        temp_wav = None
+        target_audio = filepath
+
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            appdata_bin = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Programs", "Python", "Python311", "Lib", "site-packages", "static_ffmpeg", "bin", "win32", "ffmpeg.EXE")
+            if os.path.exists(appdata_bin):
+                ffmpeg = appdata_bin
+            else:
+                ffmpeg = "ffmpeg"
+
+        temp_wav = os.path.join(os.path.dirname(filepath), f"_temp_whisper_{os.getpid()}.wav")
+        cmd = [
+            ffmpeg, "-y",
+            "-i", filepath,
+            "-vn",
+            "-ac", "1",
+            "-ar", "16000",
+            temp_wav
+        ]
+        try:
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            target_audio = temp_wav
+        except Exception:
+            target_audio = filepath
+
+        try:
+            import whisper
+            model = whisper.load_model("tiny")
+            result = model.transcribe(target_audio, fp16=False)
+            segments = result.get("segments", [])
+
+            # Alinear el texto del usuario con los timestamps de Whisper
+            lines, raw_lrc = cls.align_lyrics_with_whisper(user_text, segments, total_duration=duration)
+
+            # Guardar .lrc persistente
+            lrc_save_path = os.path.splitext(filepath)[0] + ".lrc"
+            with open(lrc_save_path, "w", encoding="utf-8") as f:
+                f.write(raw_lrc)
+
+            return {
+                "success": True,
+                "synced": True,
+                "lines": lines,
+                "raw_lrc": raw_lrc,
+                "source": "user_text + Whisper IA Alignment",
+                "model": "whisper-tiny",
+                "message": "Letra del usuario sincronizada con el audio exitosamente.",
+            }
+        except ImportError:
+            return {
+                "success": False,
+                "error": "El motor Whisper IA no está disponible. La letra se guardó como texto plano.",
+            }
+        except Exception as e:
+            return {"success": False, "error": f"Error en sincronización IA: {str(e)}"}
+        finally:
+            if temp_wav and os.path.exists(temp_wav):
+                try:
+                    os.remove(temp_wav)
+                except Exception:
+                    pass
+
+    @classmethod
+    def delete_lyrics(cls, filepath: str) -> Dict[str, Any]:
+        """Borra el archivo .lrc local de una canción para permitir reemplazarlo."""
+        if not filepath or not os.path.exists(filepath):
+            return {"success": False, "error": "Archivo de audio no encontrado"}
+
+        lrc_path = os.path.splitext(filepath)[0] + ".lrc"
+        if os.path.exists(lrc_path):
+            try:
+                os.remove(lrc_path)
+                return {"success": True, "message": "Letra eliminada. Puedes escribir una nueva o buscar en internet."}
+            except Exception as e:
+                return {"success": False, "error": f"No se pudo eliminar el archivo: {str(e)}"}
+        else:
+            return {"success": True, "message": "No había letra guardada para esta canción."}

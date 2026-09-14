@@ -208,6 +208,16 @@ class OffsetLyricsRequest(BaseModel):
     offset: float
 
 
+class SaveLyricsRequest(BaseModel):
+    track_id: str
+    text: str
+
+
+class SyncUserTextRequest(BaseModel):
+    track_id: str
+    text: str
+
+
 class ProfileCreateRequest(BaseModel):
     name: str
     icon: Optional[str] = "fa-user"
@@ -570,6 +580,45 @@ def transcribe_or_sync_lyrics(req: TranscribeRequest):
         artist=track.get("artist", ""),
         duration=track.get("duration_seconds", 0.0)
     )
+
+
+@app.post("/api/lyrics/save")
+def save_manual_lyrics(req: SaveLyricsRequest):
+    """Guarda una letra escrita manualmente por el usuario."""
+    track = library_manager.get_track_by_id(req.track_id)
+    if not track:
+        raise HTTPException(status_code=404, detail="Canción no encontrada")
+    return LyricsManager.save_manual_lyrics(
+        filepath=track["filepath"],
+        text=req.text
+    )
+
+
+@app.post("/api/lyrics/sync-text")
+def sync_user_text_lyrics(req: SyncUserTextRequest):
+    """
+    Sincroniza texto proporcionado por el usuario con Whisper IA.
+    A diferencia de /api/lyrics/auto-sync, usa el texto del usuario en vez de buscar en internet.
+    """
+    track = library_manager.get_track_by_id(req.track_id)
+    if not track:
+        raise HTTPException(status_code=404, detail="Canción no encontrada")
+    return LyricsManager.sync_user_text_with_ai(
+        filepath=track["filepath"],
+        user_text=req.text,
+        title=track.get("title", ""),
+        artist=track.get("artist", ""),
+        duration=track.get("duration_seconds", 0.0)
+    )
+
+
+@app.delete("/api/lyrics/{track_id}")
+def delete_lyrics(track_id: str):
+    """Borra la letra .lrc local de una canción para permitir reemplazarla."""
+    track = library_manager.get_track_by_id(track_id)
+    if not track:
+        raise HTTPException(status_code=404, detail="Canción no encontrada")
+    return LyricsManager.delete_lyrics(filepath=track["filepath"])
 
 
 @app.get("/api/video-info")
