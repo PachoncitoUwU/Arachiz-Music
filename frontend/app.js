@@ -115,9 +115,14 @@ function updateThemeIcon(theme) {
   if (btn) {
     btn.innerHTML = theme === "dark" ? `<i class="fa-solid fa-sun"></i>` : `<i class="fa-solid fa-moon"></i>`;
   }
+  const logoSrc = theme === "light" ? "logo-light.png" : "logo-dark.png";
   const logo = document.getElementById("brandLogoImg");
   if (logo) {
-    logo.src = theme === "light" ? "logo-light.png" : "logo-dark.png";
+    logo.src = logoSrc;
+  }
+  const mobileLogo = document.getElementById("brandLogoMobileImg");
+  if (mobileLogo) {
+    mobileLogo.src = logoSrc;
   }
 }
 
