@@ -417,3 +417,124 @@ class LibraryManager:
             "Content-Type": mime_type,
         }
         return StreamingResponse(iterfile_all(), status_code=200, headers=headers)
+
+    def delete_track(self, track_id: str) -> bool:
+        """Elimina un archivo de música del almacenamiento y de la caché."""
+        track = self.get_track_by_id(track_id)
+        if not track:
+            return False
+
+        filepath = track.get("filepath")
+        if filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except Exception as e:
+                print(f"[Library] Error al eliminar archivo de audio {filepath}: {e}")
+                return False
+
+            # Limpiar posibles archivos secundarios (.lrc, .jpg)
+            base_no_ext = os.path.splitext(filepath)[0]
+            for ext in [".lrc", ".jpg", ".png", ".webp"]:
+                extra_f = f"{base_no_ext}{ext}"
+                if os.path.exists(extra_f):
+                    try:
+                        os.remove(extra_f)
+                    except Exception:
+                        pass
+
+        # Limpiar carátula de caché si existe
+        cache_cover = os.path.join(self.covers_dir, f"{track_id}.jpg")
+        if os.path.exists(cache_cover):
+            try:
+                os.remove(cache_cover)
+            except Exception:
+                pass
+
+        if track_id in self._tracks_cache:
+            del self._tracks_cache[track_id]
+
+        return True
+
+    def check_track_exists(self, title: str, artist: str = "") -> Dict[str, Any]:
+        """Comprueba si una canción ya existe descargada en la biblioteca con coincidencia flexible."""
+        self.scan_library()
+
+        def normalize(s: str) -> str:
+            if not s:
+                return ""
+            s = s.lower().strip()
+            # Remover palabras secundarias como video oficial, audio, remix, ft, etc.
+            s = re.sub(r"(?i)\b(official music video|official video|video oficial|official audio|audio oficial|video|letra|lyrics)\b", "", s)
+            s = re.sub(r"[\(\[\{].*?[\)\]\}]", "", s)
+            return re.sub(r"[^\w\s]", "", s).strip()
+
+        norm_title = normalize(title)
+        norm_artist = normalize(artist)
+
+        for track in self._tracks_cache.values():
+            t_title = normalize(track.get("title", ""))
+            t_artist = normalize(track.get("artist", ""))
+
+            # Coincidencia exacta o muy alta
+            if norm_artist and t_artist:
+                if (norm_title == t_title or norm_title in t_title or t_title in norm_title) and (norm_artist in t_artist or t_artist in norm_artist):
+                    return {"exists": True, "track": track}
+            else:
+                if norm_title and norm_title == t_title:
+                    return {"exists": True, "track": track}
+
+        return {"exists": False, "track": None}
+
+    def find_duplicates(self) -> List[Dict[str, Any]]:
+        """Identifica todas las canciones duplicadas en la biblioteca."""
+        self.scan_library()
+        groups: Dict[str, List[Dict[str, Any]]] = {}
+
+        for track in self._tracks_cache.values():
+            def clean_key(s: str) -> str:
+                s = s.lower().strip()
+                s = re.sub(r"[\(\[\{].*?[\)\]\}]", "", s)
+                return re.sub(r"[^\w\s]", "", s).strip()
+
+            t_key = clean_key(track.get("title", ""))
+            a_key = clean_key(track.get("artist", ""))
+            if not t_key:
+                continue
+
+            dedupe_key = f"{a_key}:::{t_key}" if a_key and a_key != "desconocido" else t_key
+            if dedupe_key not in groups:
+                groups[dedupe_key] = []
+            groups[dedupe_key].append(track)
+
+        duplicates_list = []
+        for key, tracks in groups.items():
+            if len(tracks) > 1:
+                # Ordenar por tamaño y calidad (la mejor primero)
+                tracks.sort(key=lambda t: (t.get("size_bytes", 0), t.get("mtime", 0)), reverse=True)
+                duplicates_list.append({
+                    "key": key,
+                    "count": len(tracks),
+                    "best_track": tracks[0],
+                    "redundant_tracks": tracks[1:]
+                })
+
+        return duplicates_list
+
+    def clean_duplicates(self) -> Dict[str, Any]:
+        """Elimina automáticamente los archivos duplicados redundantes, conservando siempre la mejor copia."""
+        dups = self.find_duplicates()
+        deleted_count = 0
+        freed_bytes = 0
+
+        for item in dups:
+            for red in item["redundant_tracks"]:
+                freed_bytes += red.get("size_bytes", 0)
+                if self.delete_track(red["id"]):
+                    deleted_count += 1
+
+        self.scan_library()
+        return {
+            "deleted_count": deleted_count,
+            "freed_mb": round(freed_bytes / (1024 * 1024), 2),
+            "remaining_duplicates": len(self.find_duplicates())
+        }

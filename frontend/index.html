@@ -811,6 +811,14 @@
             <span>Descargar o importar canciones</span>
           </div>
         </div>
+
+        <div class="mobile-lib-create-row" id="btnMobileCleanDuplicates">
+          <div class="mobile-lib-create-icon" style="background: rgba(48, 209, 88, 0.15); color: #30D158; border-color: rgba(48, 209, 88, 0.3);"><i class="fa-solid fa-broom"></i></div>
+          <div class="mobile-lib-create-text">
+            <strong>Limpiar canciones duplicadas</strong>
+            <span id="mobileDupsHint">Detectar y eliminar copias repetidas</span>
+          </div>
+        </div>
       </div>
 
       <div class="library-header-card glass-panel desktop-only-hero">
@@ -832,6 +840,9 @@
           </button>
           <button id="btnRefreshLibrary" class="btn-pill-secondary" title="Volver a escanear carpeta">
             <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+          </button>
+          <button id="btnCleanDuplicates" class="btn-pill-secondary" title="Detectar y eliminar canciones repetidas para liberar espacio">
+            <i class="fa-solid fa-broom"></i> Limpiar Duplicados
           </button>
           <button id="btnOpenFolderFromLib" class="btn-pill-primary" title="Abrir carpeta de música en Windows">
             <i class="fa-regular fa-folder-open"></i> Explorador Windows

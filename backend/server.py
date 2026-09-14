@@ -408,6 +408,45 @@ def get_cover(track_id: str):
     return Response(content=svg_content.encode("utf-8"), media_type="image/svg+xml")
 
 
+@app.delete("/api/track/{track_id}")
+def delete_single_track(track_id: str):
+    """Elimina permanentemente una canción del disco y de la biblioteca."""
+    success = library_manager.delete_track(track_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="No se pudo encontrar o eliminar la canción")
+    return {"status": "ok", "deleted_id": track_id}
+
+
+class CheckTrackExistsRequest(BaseModel):
+    title: str
+    artist: Optional[str] = ""
+
+
+@app.post("/api/tracks/check-exists")
+def check_track_already_downloaded(req: CheckTrackExistsRequest):
+    """Comprueba si una canción ya se encuentra descargada en la biblioteca."""
+    return library_manager.check_track_exists(title=req.title, artist=req.artist or "")
+
+
+@app.get("/api/library/duplicates")
+def get_library_duplicates():
+    """Identifica canciones repetidas en la biblioteca local."""
+    dups = library_manager.find_duplicates()
+    total_redundant = sum(len(d["redundant_tracks"]) for d in dups)
+    return {
+        "groups": dups,
+        "total_groups": len(dups),
+        "total_redundant_files": total_redundant
+    }
+
+
+@app.post("/api/library/duplicates/clean")
+def clean_library_duplicates():
+    """Elimina las canciones repetidas automáticamente, conservando la copia de mayor calidad."""
+    res = library_manager.clean_duplicates()
+    return res
+
+
 class UpdateCoverRequest(BaseModel):
     track_id: str
     cover_url: str

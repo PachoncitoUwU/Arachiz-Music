@@ -977,6 +977,16 @@ function setupLibraryView() {
       renderLibraryTracks("");
     });
   }
+
+  // Botones para Limpiar Canciones Duplicadas (Desktop y Móvil)
+  const btnCleanDups = document.getElementById("btnCleanDuplicates");
+  if (btnCleanDups) {
+    btnCleanDups.addEventListener("click", triggerDuplicateCleanup);
+  }
+  const btnMobileCleanDups = document.getElementById("btnMobileCleanDuplicates");
+  if (btnMobileCleanDups) {
+    btnMobileCleanDups.addEventListener("click", triggerDuplicateCleanup);
+  }
 }
 
 async function openDownloadFolder() {
@@ -1166,6 +1176,7 @@ function renderLibraryTracks(query = "", appendNextChunk = false) {
       <div class="col-actions">
         <button class="btn-pill-micro btn-lib-play" title="Reproducir ahora"><i class="fa-solid fa-play"></i></button>
         <button class="btn-pill-micro btn-lib-lyrics" title="Ver letra"><i class="fa-solid fa-quote-left"></i></button>
+        <button class="btn-pill-micro btn-lib-delete" title="Eliminar canción"><i class="fa-regular fa-trash-can"></i></button>
       </div>
     `;
 
@@ -1185,6 +1196,12 @@ function renderLibraryTracks(query = "", appendNextChunk = false) {
       currentQueue = tracks;
       playTrack(track, idx);
       switchView("player");
+    });
+    row.querySelector(".btn-lib-delete").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (confirm(`¿Eliminar definitivamente "${track.title}" de tu biblioteca?`)) {
+        await deleteTrackFromLibrary(track.id, track.title);
+      }
     });
     row.addEventListener("dblclick", () => {
       currentQueue = tracks;
@@ -2350,6 +2367,26 @@ function setupSectionBatchSelection() {
         const idx = parseInt(btnDl.dataset.index);
         const t = currentTracks[idx];
         if (!t) return;
+
+        // Comprobar primero si la canción ya está en la biblioteca
+        try {
+          const checkRes = await fetch(`${API_URL}/api/tracks/check-exists`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: t.title, artist: t.artist || "" }),
+          });
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData.exists) {
+              const proceed = confirm(`¡Esta canción ya está descargada en tu biblioteca!\n"${checkData.track.title}" de ${checkData.track.artist}.\n\n¿Deseas descargarla de nuevo de todos modos?`);
+              if (!proceed) {
+                showToast("Descarga Omitida", `"${t.title}" ya existe en tu música local.`);
+                return;
+              }
+            }
+          }
+        } catch (e) {}
+
         btnDl.disabled = true;
         btnDl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
         try {
@@ -2464,8 +2501,52 @@ async function startBatchDownload() {
     return;
   }
 
-  const tracksToDl = currentTracks.filter((_, i) => selectedIndices.has(i));
+  let tracksToDl = currentTracks.filter((_, i) => selectedIndices.has(i));
   const playlistName = document.getElementById("playlistTitleInput").value.trim() || "Descargas";
+
+  // Verificar canciones que ya existen en la biblioteca
+  const alreadyDownloaded = [];
+  const notDownloaded = [];
+
+  // Mapa rápido de canciones locales existentes
+  const localTracks = libraryData.tracks || [];
+  const localSet = new Set(
+    localTracks.map((t) => {
+      const cT = (t.title || "").toLowerCase().replace(/[^\w\s]/gi, "").trim();
+      const cA = (t.artist || "").toLowerCase().replace(/[^\w\s]/gi, "").trim();
+      return `${cT}:::${cA}`;
+    })
+  );
+
+  tracksToDl.forEach((t) => {
+    const cleanT = (t.title || "").toLowerCase().replace(/[^\w\s]/gi, "").trim();
+    const cleanA = (t.artist || "").toLowerCase().replace(/[^\w\s]/gi, "").trim();
+    const key = `${cleanT}:::${cleanA}`;
+    if (localSet.has(key)) {
+      alreadyDownloaded.push(t);
+    } else {
+      notDownloaded.push(t);
+    }
+  });
+
+  if (alreadyDownloaded.length > 0) {
+    if (notDownloaded.length === 0) {
+      const reDl = confirm(
+        `Las ${alreadyDownloaded.length} canciones seleccionadas ya están descargadas en tu biblioteca.\n\n¿Quieres volver a descargarlas todas?`
+      );
+      if (!reDl) {
+        showToast("Omitido", "No se descargaron canciones duplicadas.");
+        return;
+      }
+    } else {
+      const omitDups = confirm(
+        `Se detectaron ${alreadyDownloaded.length} canciones que ya existen en tu biblioteca.\n\n¿Deseas omitir las ${alreadyDownloaded.length} repetidas y descargar solo las ${notDownloaded.length} nuevas?\n(Aceptar = Solo nuevas, Cancelar = Descargar todas)`
+      );
+      if (omitDups) {
+        tracksToDl = notDownloaded;
+      }
+    }
+  }
 
   try {
     const res = await fetch(`${API_URL}/api/download`, {
@@ -4785,5 +4866,66 @@ function renderMobileHomeCarousels() {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PelotaMp v2.6 — Eliminación de Canciones y Limpieza de Duplicados
+// ─────────────────────────────────────────────────────────────────────────────
+async function deleteTrackFromLibrary(trackId, trackTitle) {
+  try {
+    const res = await fetch(`${API_URL}/api/track/${trackId}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      showToast("Canción Eliminada", `"${trackTitle}" ha sido eliminada del almacenamiento.`);
+      if (activeTrack && activeTrack.id === trackId) {
+        if (activeAudio) activeAudio.pause();
+        isAudioPlaying = false;
+        activeTrack = null;
+      }
+      await loadLibrary();
+    } else {
+      showError("Error", "No se pudo eliminar el archivo.");
+    }
+  } catch (err) {
+    showError("Error", err.message);
+  }
+}
 
+async function triggerDuplicateCleanup() {
+  try {
+    const checkRes = await fetch(`${API_URL}/api/library/duplicates`);
+    if (!checkRes.ok) throw new Error("No se pudo escanear duplicados.");
+    const data = await checkRes.json();
 
+    if (!data.total_redundant_files || data.total_redundant_files === 0) {
+      showToast("Biblioteca Limpia", "¡Excelente! No tienes ninguna canción duplicada en tu música.");
+      return;
+    }
+
+    const groupNames = data.groups.slice(0, 5).map(g => `• ${g.best_track.title} (${g.count} copias)`).join("\n");
+    const moreText = data.total_groups > 5 ? `\n... y ${data.total_groups - 5} grupos más.` : "";
+
+    const confirmClean = confirm(
+      `Se encontraron ${data.total_redundant_files} archivos repetidos en tu música:\n\n${groupNames}${moreText}\n\n¿Deseas eliminarlos automáticamente conservando solo la copia de mayor calidad?`
+    );
+
+    if (!confirmClean) return;
+
+    showToast("Limpiando", "Eliminando canciones duplicadas y liberando espacio...");
+    const cleanRes = await fetch(`${API_URL}/api/library/duplicates/clean`, {
+      method: "POST",
+    });
+
+    if (cleanRes.ok) {
+      const cleanData = await cleanRes.json();
+      showToast(
+        "Duplicados Eliminados",
+        `Se eliminaron ${cleanData.deleted_count} copias redundantes (${cleanData.freed_mb} MB liberados).`
+      );
+      await loadLibrary();
+    } else {
+      showError("Error", "Ocurrió un problema al limpiar canciones duplicadas.");
+    }
+  } catch (err) {
+    showError("Error", err.message);
+  }
+}
