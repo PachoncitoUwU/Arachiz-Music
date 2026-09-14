@@ -8619,3 +8619,1439 @@ button:active {
 
 
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PelotaMp v3.1 — Mobile Clean Redesign (Spotify + Apple Glass, sin morado)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── DESKTOP: limpiar elementos que solo deben existir en móvil ──────────── */
+@media (min-width: 769px) {
+  .mobile-bottom-tab-bar,
+  .mobile-mini-player,
+  .mobile-home-header,
+  .mobile-section-block,
+  .mobile-library-header,
+  .player-mobile-top-bar,
+  .player-mobile-device-bar,
+  .player-mobile-options-trigger-wrap {
+    display: none !important;
+  }
+
+  /* PC: botón play ligeramente más grande */
+  .btn-control-hero-play {
+    width: 64px;
+    height: 64px;
+    font-size: 22px;
+  }
+
+  /* PC: sombra de carátula más rica */
+  .player-large-cover {
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.15) !important;
+  }
+
+  /* PC: selector de carátula/video visible */
+  .player-media-mode-header { display: flex; }
+}
+
+/* ─── MOBILE: reset general ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* 0. APP SHELL — sin padding desktop */
+  .app-shell {
+    padding: 0 0 148px 0 !important; /* espacio para mini-player + tab bar */
+    gap: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Ocultar header de navegación de escritorio */
+  .top-nav { display: none !important; }
+
+  /* Ocultar TODO el contenido desktop dentro del dashboard (iPod 3D, hero, grid) */
+  .dashboard-hero-wrap,
+  .dashboard-3d-stage,
+  .dashboard-features-grid,
+  .desktop-only-hero,
+  .ipod-showcase-container,
+  .webgl-container,
+  .hero-section,
+  .quick-bar,
+  .input-card-hero {
+    display: none !important;
+  }
+
+  /* Ocultar letras en móvil */
+  .lyrics-right-stage { display: none !important; }
+
+  /* Ocultar selector Carátula/Video en móvil */
+  .player-media-mode-header { display: none !important; }
+
+  /* Ocultar opciones del reproductor en móvil */
+  .player-mobile-options-trigger-wrap { display: none !important; }
+
+  /* Botón AI flotante — subir para no quedar tapado por mini player + tab bar */
+  .ai-trigger-btn {
+    bottom: 156px !important;
+  }
+
+  /* ── 1. BARRA INFERIOR (Tab Bar estilo Spotify / Apple Music) ── */
+  .mobile-bottom-tab-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 68px;
+    background: rgba(10, 10, 14, 0.97);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    z-index: 9000;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mob-tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.18s ease;
+    padding: 6px 4px;
+    letter-spacing: 0.1px;
+    font-family: var(--font-apple);
+  }
+
+  .mob-tab-btn i { font-size: 21px; transition: transform 0.18s cubic-bezier(0.16,1,0.3,1); }
+  .mob-tab-btn.active { color: #0A84FF; }
+  .mob-tab-btn.active i { transform: scale(1.08); }
+  .mob-tab-btn:active i { transform: scale(0.86); }
+
+  /* ── 2. MINI PLAYER (encima del tab bar) ── */
+  .mobile-mini-player {
+    position: fixed;
+    bottom: 68px; left: 8px; right: 8px;
+    height: 60px;
+    background: rgba(26,26,34,0.98);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px 0 8px;
+    gap: 10px;
+    z-index: 8999;
+    box-shadow: 0 -2px 16px rgba(0,0,0,0.45);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  .mobile-mini-player:active { transform: scale(0.98); }
+
+  .mini-player-cover {
+    width: 44px; height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  }
+  .mini-player-info { flex: 1; min-width: 0; }
+  .mini-player-title {
+    font-size: 13.5px; font-weight: 600; color: #FFF;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mini-player-artist {
+    font-size: 11.5px; color: rgba(255,255,255,0.5);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .mini-player-controls { display: flex; align-items: center; gap: 2px; }
+  .mini-player-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%; background: transparent; border: none;
+    color: rgba(255,255,255,0.85); font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.15s ease, color 0.15s ease;
+  }
+  .mini-player-btn:active { transform: scale(0.82); color: #0A84FF; }
+
+  /* ── 3. HEADER INICIO MÓVIL ── */
+  .mobile-home-header {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 16px 10px !important;
+    background: transparent !important;
+  }
+
+  .mobile-home-greeting-row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .mobile-greeting-left { display: flex; align-items: center; gap: 12px; }
+
+  .mobile-logo-badge {
+    width: 42px !important; height: 42px !important;
+    border-radius: 12px !important;
+  }
+  .mobile-logo-badge .brand-logo-img { width: 30px !important; height: 30px !important; }
+
+  .mobile-greeting-sub {
+    font-size: 13px !important; font-weight: 400 !important;
+    color: rgba(255,255,255,0.55) !important; display: block; margin-bottom: 1px;
+  }
+  .mobile-greeting-title {
+    font-size: 24px !important; font-weight: 800 !important;
+    letter-spacing: -0.5px !important;
+    background: linear-gradient(135deg, #FFF 55%, #0A84FF);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin: 0 !important;
+  }
+  .mobile-home-avatar-btn {
+    width: 40px !important; height: 40px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #0A84FF, #00C0FF) !important;
+    border: none !important; color: #FFF !important; font-size: 18px !important;
+    box-shadow: 0 4px 12px rgba(10,132,255,0.4) !important;
+    flex-shrink: 0;
+  }
+
+  /* Barra de búsqueda */
+  .mobile-home-search-wrap {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.11) !important;
+    border-radius: 12px !important;
+    height: 44px !important;
+    padding: 0 14px !important;
+    display: flex; align-items: center;
+  }
+  .mobile-home-search-wrap input { font-size: 14px !important; }
+
+  /* Pills de categoría */
+  .mobile-home-category-pills {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding-bottom: 2px; scrollbar-width: none;
+  }
+  .mobile-home-category-pills::-webkit-scrollbar { display: none; }
+  .mobile-cat-pill {
+    padding: 7px 16px !important; font-size: 13px !important;
+    font-weight: 600 !important; white-space: nowrap;
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.09) !important;
+    border-radius: 20px !important;
+    color: rgba(255,255,255,0.65) !important;
+    transition: all 0.2s ease !important;
+  }
+  .mobile-cat-pill.active {
+    background: #0A84FF !important; border-color: #0A84FF !important;
+    color: #FFF !important; box-shadow: 0 4px 14px rgba(10,132,255,0.38) !important;
+  }
+
+  /* ── 4. SECCIONES (Escuchado recientemente / Para ti) ── */
+  .mobile-section-block {
+    display: flex; flex-direction: column;
+    gap: 10px; padding: 10px 0 14px;
+  }
+  .mobile-section-header {
+    display: flex; align-items: center;
+    justify-content: space-between; padding: 0 16px;
+  }
+  .mobile-section-header h3 {
+    font-size: 19px !important; font-weight: 700 !important;
+    letter-spacing: -0.3px !important; margin: 0; color: #FFF;
+  }
+  .mobile-section-more-btn {
+    background: transparent; border: none;
+    color: rgba(255,255,255,0.4); font-size: 13px; cursor: pointer;
+  }
+  .mobile-section-tag {
+    font-size: 10.5px; font-weight: 600; color: #0A84FF;
+    background: rgba(10,132,255,0.12);
+    border: 1px solid rgba(10,132,255,0.28);
+    padding: 3px 8px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+
+  /* Carrusel horizontal */
+  .mobile-horizontal-carousel {
+    display: flex; gap: 12px;
+    overflow-x: auto; padding: 4px 16px 6px;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .mobile-horizontal-carousel::-webkit-scrollbar { display: none; }
+
+  /* Cards recientes */
+  .mobile-recent-card {
+    flex: 0 0 134px; scroll-snap-align: start;
+    display: flex; flex-direction: column; cursor: pointer;
+    transition: transform 0.18s ease;
+  }
+  .mobile-recent-card:active { transform: scale(0.94); }
+  .mobile-recent-thumb-wrap {
+    width: 134px !important; height: 134px !important;
+    border-radius: 12px !important; overflow: hidden;
+    background: rgba(255,255,255,0.05);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.45) !important;
+  }
+  .mobile-recent-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .mobile-recent-title {
+    font-size: 12.5px !important; font-weight: 600 !important;
+    color: #FFF !important; margin: 8px 0 2px !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mobile-recent-artist {
+    font-size: 11.5px !important; color: rgba(255,255,255,0.48) !important;
+    margin: 0 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Cards "Para ti" */
+  .mobile-mix-card {
+    flex: 0 0 138px !important; height: 138px !important;
+    border-radius: 14px !important; padding: 12px !important;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    scroll-snap-align: start; cursor: pointer; position: relative; overflow: hidden;
+    border: none !important; box-shadow: 0 8px 22px rgba(0,0,0,0.45) !important;
+    transition: transform 0.18s ease !important;
+  }
+  .mobile-mix-card:active { transform: scale(0.93) !important; }
+  .mobile-mix-card::after {
+    content: ''; position: absolute; inset: 0; border-radius: 14px;
+    background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .mix-card-blue    { background: linear-gradient(135deg, #1A5ACC 0%, #0A84FF 100%) !important; }
+  .mix-card-indigo  { background: linear-gradient(135deg, #0B2240 0%, #0F4A80 100%) !important; }
+  .mix-card-cyan    { background: linear-gradient(135deg, #007AFF 0%, #00C0FF 100%) !important; }
+  .mix-card-orange  { background: linear-gradient(135deg, #C93400 0%, #FF9500 100%) !important; }
+  .mobile-mix-card h4 { font-size: 13.5px; font-weight: 700; color: #FFF; margin: 0 0 1px; position: relative; z-index: 1; text-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+  .mobile-mix-card p  { font-size: 11px; color: rgba(255,255,255,0.8); margin: 0; position: relative; z-index: 1; }
+  .mobile-mix-card .mix-card-icon {
+    position: absolute; top: 10px; right: 10px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #FFF; z-index: 1;
+  }
+
+  /* ── 5. REPRODUCTOR MÓVIL (full-screen limpio) ── */
+  .player-studio-layout {
+    display: flex !important; flex-direction: column !important;
+    gap: 0 !important; padding: 0 !important;
+  }
+  .player-left-stage {
+    background: none !important; box-shadow: none !important;
+    border: none !important; padding: 0 !important;
+    border-radius: 0 !important; gap: 0 !important;
+    width: 100% !important; align-items: stretch !important;
+  }
+
+  /* Header del reproductor */
+  .player-mobile-top-bar {
+    display: flex !important;
+    align-items: center !important; justify-content: space-between !important;
+    padding: 16px 20px 6px !important; width: 100% !important;
+  }
+  .player-mobile-back-btn {
+    width: 34px !important; height: 34px !important;
+    background: rgba(255,255,255,0.07) !important;
+    border-radius: 50% !important; border: none !important;
+    color: rgba(255,255,255,0.65) !important; font-size: 14px !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+  }
+  .player-mobile-now-playing-label {
+    font-size: 11px !important; font-weight: 600 !important;
+    color: rgba(255,255,255,0.6) !important;
+    letter-spacing: 0.6px !important; text-transform: uppercase !important;
+  }
+
+  /* Carátula grande */
+  .player-art-frame {
+    max-width: calc(100vw - 48px) !important;
+    width: calc(100vw - 48px) !important;
+    aspect-ratio: 1 !important; height: auto !important;
+    margin: 14px auto 18px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 20px 55px rgba(0,0,0,0.65) !important;
+  }
+  .player-large-cover { border-radius: 14px !important; box-shadow: none !important; }
+  .player-format-pill {
+    bottom: 12px !important; right: 12px !important;
+    background: rgba(0,0,0,0.72) !important; backdrop-filter: blur(10px) !important;
+    font-size: 10.5px !important;
+  }
+  .player-vinyl-shadow { display: none !important; }
+
+  /* Metadatos */
+  .player-meta-block { padding: 0 22px !important; width: 100% !important; }
+  .player-meta-info-row {
+    display: flex !important; align-items: center !important;
+    justify-content: space-between !important; gap: 12px !important;
+  }
+  .player-meta-titles { flex: 1 !important; min-width: 0 !important; text-align: left !important; }
+  .player-hero-title {
+    font-size: 22px !important; font-weight: 700 !important;
+    letter-spacing: -0.4px !important; color: #FFF !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .player-hero-artist {
+    font-size: 15px !important; color: rgba(255,255,255,0.58) !important;
+    margin-top: 2px !important; font-weight: 400 !important;
+  }
+  .player-hero-album { display: none !important; }
+  .btn-like-heart {
+    width: 40px !important; height: 40px !important;
+    background: transparent !important; border: none !important;
+    color: rgba(255,255,255,0.4) !important; font-size: 22px !important;
+    flex-shrink: 0 !important; cursor: pointer !important;
+    transition: color 0.18s ease, transform 0.18s ease !important;
+  }
+  .btn-like-heart:active { transform: scale(0.82) !important; }
+
+  /* Timeline */
+  .player-timeline-wrap {
+    padding: 0 22px !important; margin-top: 18px !important; width: 100% !important;
+  }
+  .timeline-readouts {
+    font-size: 11.5px !important; color: rgba(255,255,255,0.42) !important;
+    margin-bottom: 8px !important; font-weight: 500 !important;
+  }
+  .custom-progress-track {
+    height: 4px !important;
+    background: rgba(255,255,255,0.14) !important; border-radius: 4px !important;
+  }
+  .custom-progress-fill {
+    background: linear-gradient(90deg, #0A84FF, #2997FF) !important; border-radius: 4px !important;
+  }
+  .custom-progress-thumb {
+    width: 14px !important; height: 14px !important;
+    background: #FFF !important; box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
+    opacity: 1 !important;
+  }
+
+  /* Controles */
+  .player-controls-row {
+    display: flex !important; align-items: center !important;
+    justify-content: center !important; gap: 16px !important;
+    padding: 0 16px !important; margin-top: 18px !important; width: 100% !important;
+  }
+  .btn-control-hero-play {
+    width: 68px !important; height: 68px !important; font-size: 24px !important;
+    background: #FFF !important; color: #000 !important;
+    box-shadow: 0 6px 24px rgba(255,255,255,0.22) !important;
+    border: none !important;
+  }
+  .btn-control-hero-play:hover { background: #F0F0F0 !important; transform: scale(1.03) !important; }
+  .btn-control-step {
+    width: 50px !important; height: 50px !important; font-size: 19px !important;
+    background: transparent !important; border: none !important;
+    color: rgba(255,255,255,0.82) !important;
+  }
+  .btn-control-subtle {
+    font-size: 17px !important; color: rgba(255,255,255,0.42) !important; padding: 10px !important;
+  }
+  .btn-control-subtle.active,
+  .btn-control-subtle:hover { color: #0A84FF !important; }
+
+  /* Barra de dispositivo */
+  .player-mobile-device-bar {
+    display: flex !important; align-items: center !important;
+    justify-content: space-between !important;
+    padding: 14px 22px !important; margin-top: 8px !important;
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    width: 100% !important;
+  }
+  .player-device-indicator {
+    font-size: 12px !important; font-weight: 500 !important;
+    color: rgba(255,255,255,0.5) !important;
+    display: flex !important; align-items: center !important; gap: 7px !important;
+  }
+  .player-device-indicator i { color: #0A84FF !important; font-size: 13px !important; }
+
+  /* ── 6. BIBLIOTECA MÓVIL ── */
+  .mobile-library-header {
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 20px 16px 10px !important; background: transparent !important;
+  }
+  .mobile-lib-title-row { display: flex; align-items: center; justify-content: space-between; }
+  .mobile-lib-title-row h2 {
+    font-size: 26px !important; font-weight: 800 !important;
+    letter-spacing: -0.5px !important; color: #FFF !important; margin: 0;
+  }
+  .mobile-lib-add-btn {
+    width: 36px !important; height: 36px !important;
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.11) !important;
+    border-radius: 50% !important; color: #FFF !important; font-size: 15px !important;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .mobile-lib-segments {
+    display: flex; gap: 8px; overflow-x: auto;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .mobile-lib-segments::-webkit-scrollbar { display: none; }
+  .mobile-lib-seg-btn {
+    padding: 7px 16px !important; font-size: 13px !important;
+    font-weight: 600 !important; white-space: nowrap;
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.09) !important;
+    border-radius: 20px !important; color: rgba(255,255,255,0.58) !important;
+    cursor: pointer; transition: all 0.18s ease !important;
+  }
+  .mobile-lib-seg-btn.active {
+    background: #0A84FF !important; border-color: #0A84FF !important;
+    color: #FFF !important; box-shadow: 0 4px 12px rgba(10,132,255,0.38) !important;
+  }
+  .mobile-lib-create-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    border-radius: 14px !important; cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .mobile-lib-create-row:active { background: rgba(255,255,255,0.08) !important; }
+  .mobile-lib-create-icon {
+    width: 46px !important; height: 46px !important;
+    border-radius: 12px !important;
+    background: rgba(10,132,255,0.12) !important;
+    border: 1px solid rgba(10,132,255,0.24) !important;
+    color: #0A84FF !important; font-size: 18px !important;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .mobile-lib-create-text strong { font-size: 14px !important; font-weight: 700 !important; color: #FFF !important; }
+  .mobile-lib-create-text span { font-size: 12px !important; color: rgba(255,255,255,0.44) !important; }
+}
+
+
+@media (max-width: 768px) {
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     0. APP SHELL — Resetear para mobile (sin padding lateral del desktop)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .app-shell {
+    padding: 0 0 80px 0 !important;
+    gap: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Ocultar el header de escritorio en mobile */
+  .top-nav {
+    display: none !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     1. BARRA INFERIOR DE NAVEGACIÓN (Bottom Tab Bar estilo Spotify / Apple Music)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .mobile-bottom-tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    background: rgba(12, 12, 16, 0.96);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    z-index: 9000;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mob-tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    padding: 8px 4px 6px 4px;
+    letter-spacing: 0.2px;
+  }
+
+  .mob-tab-btn i {
+    font-size: 20px;
+    transition: transform 0.2s var(--ease-spring-snappy, cubic-bezier(0.16,1,0.3,1));
+  }
+
+  .mob-tab-btn.active {
+    color: #0A84FF;
+  }
+
+  .mob-tab-btn.active i {
+    transform: scale(1.1);
+  }
+
+  .mob-tab-btn:active i {
+    transform: scale(0.88);
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     2. MINI PLAYER PERSISTENTE (encima de la tab bar, estilo Spotify)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .mobile-mini-player {
+    position: fixed;
+    bottom: 72px;
+    left: 8px;
+    right: 8px;
+    height: 62px;
+    background: rgba(28, 28, 36, 0.97);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px 0 8px;
+    gap: 10px;
+    z-index: 8999;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .mobile-mini-player:active {
+    transform: scale(0.98);
+  }
+
+  .mini-player-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .mini-player-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mini-player-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #FFFFFF;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mini-player-artist {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  .mini-player-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .mini-player-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+
+  .mini-player-btn:active {
+    transform: scale(0.85);
+    color: #0A84FF;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     3. HEADER INICIO MÓVIL — Mejorado (Saludo + Avatar estilo referencia)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .mobile-home-header {
+    background: transparent !important;
+    padding: 20px 16px 12px 16px !important;
+  }
+
+  .mobile-greeting-sub {
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+
+  .mobile-greeting-title {
+    font-size: 26px !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.6px !important;
+    background: linear-gradient(135deg, #FFFFFF 60%, #0A84FF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .mobile-home-avatar-btn {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #0A84FF, #00C0FF) !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-size: 18px !important;
+    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4) !important;
+  }
+
+  /* Barra de búsqueda móvil mejorada */
+  .mobile-home-search-wrap {
+    background: rgba(255, 255, 255, 0.09) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 12px !important;
+    height: 46px !important;
+    padding: 0 16px !important;
+  }
+
+  .mobile-home-search-wrap input {
+    font-size: 15px !important;
+  }
+
+  /* Pills de categoría */
+  .mobile-cat-pill {
+    padding: 8px 18px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 24px !important;
+    transition: all 0.22s ease !important;
+  }
+
+  .mobile-cat-pill.active {
+    background: #0A84FF !important;
+    border-color: #0A84FF !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 16px rgba(10, 132, 255, 0.4) !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     4. SECCIÓN ESCUCHADO RECIENTEMENTE — Cards más grandes y definidas
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .mobile-section-header h3 {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.4px !important;
+  }
+
+  .mobile-recent-thumb-wrap {
+    width: 140px !important;
+    height: 140px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .mobile-recent-card {
+    flex: 0 0 140px !important;
+  }
+
+  .mobile-recent-title {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    margin-top: 10px !important;
+  }
+
+  .mobile-recent-artist {
+    font-size: 12px !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+  }
+
+  /* Cards "Para ti" mejoradas con overlay de gradiente */
+  .mobile-mix-card {
+    flex: 0 0 145px !important;
+    height: 145px !important;
+    border-radius: 14px !important;
+    border: none !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .mobile-mix-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .mix-card-blue {
+    background: linear-gradient(135deg, #1E5FCC 0%, #0A84FF 60%, #00C0FF 100%) !important;
+  }
+
+  .mix-card-indigo {
+    background: linear-gradient(135deg, #0A2340 0%, #0F4C81 100%) !important;
+  }
+
+  .mix-card-cyan {
+    background: linear-gradient(135deg, #007AFF 0%, #00C0FF 100%) !important;
+  }
+
+  .mix-card-orange {
+    background: linear-gradient(135deg, #FF6B00 0%, #FF9500 100%) !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     5. VISTA REPRODUCTOR MÓVIL — Full-screen estilo referencia (Spotify + Apple)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+  /* Layout del reproductor: 1 columna en mobile */
+  .player-studio-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ocultar letras en móvil (queda solo el reproductor) */
+  .lyrics-right-stage {
+    display: none !important;
+  }
+
+  .player-left-stage {
+    background: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    gap: 0 !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    position: relative !important;
+  }
+
+  /* Header del reproductor: flecha abajo + "Reproduciendo ahora" + "..." */
+  .player-mobile-top-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 20px 8px 20px !important;
+    width: 100% !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+
+  .player-mobile-back-btn {
+    width: 36px !important;
+    height: 36px !important;
+    background: rgba(255,255,255,0.08) !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: rgba(255,255,255,0.7) !important;
+    font-size: 15px !important;
+    border: none !important;
+  }
+
+  .player-mobile-now-playing-label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+  }
+
+  /* Carátula grande en móvil — ocupa casi todo el ancho */
+  .player-art-frame {
+    max-width: calc(100vw - 48px) !important;
+    width: calc(100vw - 48px) !important;
+    aspect-ratio: 1 / 1 !important;
+    margin: 12px auto 20px auto !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7) !important;
+  }
+
+  .player-large-cover {
+    border-radius: 16px !important;
+    box-shadow: none !important;
+  }
+
+  /* Badge de formato dentro de la carátula */
+  .player-format-pill {
+    bottom: 14px !important;
+    right: 14px !important;
+    font-size: 11px !important;
+    background: rgba(0,0,0,0.7) !important;
+    backdrop-filter: blur(10px) !important;
+  }
+
+  /* Bloque de metadatos (título, artista, corazón) */
+  .player-meta-block {
+    padding: 0 24px !important;
+    width: 100% !important;
+  }
+
+  .player-meta-info-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+  }
+
+  .player-meta-titles {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .player-hero-title {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px !important;
+    color: #FFFFFF !important;
+  }
+
+  .player-hero-artist {
+    font-size: 16px !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    margin-top: 3px !important;
+  }
+
+  .player-hero-album {
+    display: none !important;
+  }
+
+  /* Botón corazón / favorito */
+  .btn-like-heart {
+    width: 40px !important;
+    height: 40px !important;
+    background: transparent !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    font-size: 22px !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    transition: color 0.2s ease, transform 0.2s ease !important;
+  }
+
+  .btn-like-heart.active,
+  .btn-like-heart:focus {
+    color: #0A84FF !important;
+  }
+
+  .btn-like-heart:active {
+    transform: scale(0.85) !important;
+  }
+
+  /* Timeline del reproductor */
+  .player-timeline-wrap {
+    padding: 0 24px !important;
+    margin-top: 20px !important;
+    width: 100% !important;
+  }
+
+  .custom-progress-track {
+    height: 5px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-radius: 10px !important;
+  }
+
+  .custom-progress-fill {
+    background: linear-gradient(90deg, #0A84FF, #2997FF) !important;
+    border-radius: 10px !important;
+  }
+
+  .custom-progress-thumb {
+    width: 16px !important;
+    height: 16px !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+    opacity: 1 !important;
+  }
+
+  .timeline-readouts {
+    font-size: 12px !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    margin-bottom: 8px !important;
+    font-weight: 500 !important;
+  }
+
+  /* Controles principales del reproductor */
+  .player-controls-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 20px !important;
+    padding: 0 20px !important;
+    margin-top: 20px !important;
+    width: 100% !important;
+  }
+
+  .btn-control-hero-play {
+    width: 70px !important;
+    height: 70px !important;
+    font-size: 26px !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    box-shadow: 0 8px 28px rgba(255, 255, 255, 0.25) !important;
+  }
+
+  .btn-control-hero-play:hover {
+    background: #F0F0F0 !important;
+    transform: scale(1.04) !important;
+  }
+
+  .btn-control-step {
+    width: 52px !important;
+    height: 52px !important;
+    font-size: 20px !important;
+    background: transparent !important;
+    border: none !important;
+    color: rgba(255,255,255,0.85) !important;
+  }
+
+  .btn-control-subtle {
+    font-size: 18px !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    padding: 10px !important;
+  }
+
+  .btn-control-subtle.active,
+  .btn-control-subtle:hover {
+    color: #0A84FF !important;
+  }
+
+  /* Barra de dispositivo inferior del reproductor */
+  .player-mobile-device-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 24px !important;
+    margin-top: 12px !important;
+    border-top: 1px solid rgba(255,255,255,0.07) !important;
+    width: 100% !important;
+  }
+
+  .player-device-indicator {
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.55) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .player-device-indicator i {
+    color: #0A84FF !important;
+    font-size: 14px !important;
+  }
+
+  /* Ocultar botón de opciones del reproductor en mobile */
+  .player-mobile-options-trigger-wrap {
+    display: none !important;
+  }
+
+  /* Ocultar selector de carátula/video en mobile */
+  .player-media-mode-header {
+    display: none !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     6. BIBLIOTECA MÓVIL — Estilo playlist list (como la referencia)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .mobile-library-header {
+    padding: 20px 16px 12px 16px !important;
+    background: transparent !important;
+  }
+
+  .mobile-lib-title-row h2 {
+    font-size: 28px !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.6px !important;
+    color: #FFFFFF !important;
+  }
+
+  .mobile-lib-add-btn {
+    width: 38px !important;
+    height: 38px !important;
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 50% !important;
+    color: #FFFFFF !important;
+    font-size: 16px !important;
+  }
+
+  .mobile-lib-seg-btn {
+    padding: 8px 18px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    border-radius: 24px !important;
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: rgba(255,255,255,0.6) !important;
+  }
+
+  .mobile-lib-seg-btn.active {
+    background: #0A84FF !important;
+    border-color: #0A84FF !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 14px rgba(10,132,255,0.4) !important;
+  }
+
+  /* Fila de crear playlist */
+  .mobile-lib-create-row {
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+  }
+
+  .mobile-lib-create-icon {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 12px !important;
+    background: rgba(10,132,255,0.12) !important;
+    border: 1px solid rgba(10,132,255,0.25) !important;
+    color: #0A84FF !important;
+    font-size: 20px !important;
+  }
+
+  .mobile-lib-create-text strong {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+  }
+
+  .mobile-lib-create-text span {
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.45) !important;
+    margin-top: 2px !important;
+    display: block !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     7. FILAS DE TRACKS/PLAYLIST — Estilo lista de la referencia (cover + info + duración)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .track-row,
+  .library-track-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 16px !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+    cursor: pointer !important;
+    transition: background-color 0.15s ease !important;
+  }
+
+  .track-row:active,
+  .library-track-item:active {
+    background: rgba(255,255,255,0.05) !important;
+  }
+
+  .track-row-cover,
+  .track-item-cover {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 8px !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
+  }
+
+  .track-row-info,
+  .track-item-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .track-row-title,
+  .track-item-title {
+    font-size: 14.5px !important;
+    font-weight: 600 !important;
+    color: #FFFFFF !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .track-row-artist,
+  .track-item-artist {
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.5) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 2px !important;
+  }
+
+  .track-row-duration,
+  .track-item-duration {
+    font-size: 12px !important;
+    color: rgba(255,255,255,0.35) !important;
+    flex-shrink: 0 !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  /* Botón "..." (more options) en track row */
+  .track-row-more,
+  .track-item-more {
+    width: 32px !important;
+    height: 32px !important;
+    background: transparent !important;
+    border: none !important;
+    color: rgba(255,255,255,0.35) !important;
+    font-size: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Indicador de canción activa (waveform animated) */
+  .track-row.playing .track-row-title,
+  .library-track-item.playing .track-item-title {
+    color: #0A84FF !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     8. GRID DE GÉNEROS (estilo referencia: 4 cards coloridas de 2x2)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .mobile-genre-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    padding: 12px 16px !important;
+  }
+
+  .mobile-genre-card {
+    height: 100px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    padding: 12px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease !important;
+    border: none !important;
+    text-align: left !important;
+  }
+
+  .mobile-genre-card:active {
+    transform: scale(0.96) !important;
+  }
+
+  .mobile-genre-card span {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
+    position: relative !important;
+    z-index: 1 !important;
+    letter-spacing: -0.2px !important;
+  }
+
+  .genre-card-urbano {
+    background: linear-gradient(135deg, #1A4A8A 0%, #0A84FF 100%) !important;
+  }
+
+  .genre-card-pop {
+    background: linear-gradient(135deg, #1A7A4A 0%, #30D158 100%) !important;
+  }
+
+  .genre-card-rock {
+    background: linear-gradient(135deg, #8A1A1A 0%, #FF453A 100%) !important;
+  }
+
+  .genre-card-electronica {
+    background: linear-gradient(135deg, #1A4A3A 0%, #00C0FF 100%) !important;
+  }
+
+  .genre-card-rap {
+    background: linear-gradient(135deg, #0A2340 0%, #0071E3 100%) !important;
+  }
+
+  .genre-card-latin {
+    background: linear-gradient(135deg, #7A3A00 0%, #FF9500 100%) !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     9. LISTA DE TENDENCIAS (Buscar — trending artists)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .mobile-trending-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 11px 16px !important;
+    cursor: pointer !important;
+    transition: background-color 0.15s ease !important;
+    border-radius: 12px !important;
+    margin: 0 8px !important;
+  }
+
+  .mobile-trending-row:active {
+    background: rgba(255,255,255,0.05) !important;
+  }
+
+  .mobile-trending-avatar {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+    background: rgba(255,255,255,0.1) !important;
+  }
+
+  .mobile-trending-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .mobile-trending-name {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: #FFFFFF !important;
+  }
+
+  .mobile-trending-type {
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.5) !important;
+    margin-top: 1px !important;
+  }
+
+  .mobile-trending-arrow {
+    color: rgba(255,255,255,0.25) !important;
+    font-size: 12px !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     10. SECCIÓN HEADER GENÉRICO PARA BÚSQUEDA MÓVIL
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .mobile-search-page-header {
+    padding: 20px 16px 8px 16px;
+  }
+
+  .mobile-search-page-header h2 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    color: #FFFFFF;
+    margin-bottom: 14px;
+  }
+
+  .mobile-search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 0 14px;
+    height: 48px;
+  }
+
+  .mobile-search-input-wrap i {
+    color: rgba(255,255,255,0.45);
+    font-size: 15px;
+  }
+
+  .mobile-search-input-wrap input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #FFFFFF;
+    font-size: 15px;
+    font-family: var(--font-apple);
+  }
+
+  .mobile-search-input-wrap input::placeholder {
+    color: rgba(255,255,255,0.35);
+  }
+
+  /* Subtítulo de sección dentro de buscar */
+  .mobile-search-section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: -0.3px;
+    padding: 16px 16px 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobile-search-see-all {
+    font-size: 13px;
+    font-weight: 500;
+    color: #0A84FF;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     11. VISTA PC — Mejorar panel derecho de letra con separador visual
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  /* (en mobile esto se oculta, en PC mantiene el diseño glass) */
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PC / DESKTOP — Mejoras al reproductor (botón play más grande y visible)
+   Sin breakpoint: aplica en desktop también
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (min-width: 769px) {
+  /* Botón de play en desktop — ligeramente más grande */
+  .btn-control-hero-play {
+    width: 66px;
+    height: 66px;
+    font-size: 24px;
+  }
+
+  /* Carátula en desktop — sombra más rica */
+  .player-large-cover {
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.5),
+      inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+  }
+
+  /* Panel izquierda del reproductor en desktop */
+  .player-left-stage {
+    background-color: var(--surface-glass) !important;
+    background-image: linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.05) 100%) !important;
+  }
+
+  /* Barra de device indicator solo visible en mobile */
+  .player-mobile-device-bar {
+    display: none;
+  }
+
+  /* Top bar del player oculta en desktop */
+  .player-mobile-top-bar {
+    display: none;
+  }
+}
+

@@ -1934,5 +1934,117 @@ O pega formato LRC:
   </aside>
 
   <script src="app.js?v=4.3"></script>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       MOBILE BOTTOM TAB BAR — Estilo Spotify / Apple Music (solo móvil)
+       ══════════════════════════════════════════════════════════════════════ -->
+  <nav class="mobile-bottom-tab-bar" id="mobileBottomTabBar" aria-label="Navegación principal">
+    <button class="mob-tab-btn active" id="mobTabHome" onclick="mobileSwitchTab('dashboard')" title="Inicio">
+      <i class="fa-solid fa-house"></i>
+      <span>Inicio</span>
+    </button>
+    <button class="mob-tab-btn" id="mobTabSearch" onclick="mobileSwitchTab('search')" title="Buscar">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <span>Buscar</span>
+    </button>
+    <button class="mob-tab-btn" id="mobTabLibrary" onclick="mobileSwitchTab('library')" title="Tu biblioteca">
+      <i class="fa-solid fa-book-open"></i>
+      <span>Tu biblioteca</span>
+    </button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       MINI PLAYER MÓVIL — Persistente encima de la tab bar (estilo Spotify)
+       ══════════════════════════════════════════════════════════════════════ -->
+  <div class="mobile-mini-player hidden" id="mobileMiniPlayer" onclick="mobileSwitchTab('player')" title="Abrir reproductor">
+    <img class="mini-player-cover" id="miniPlayerCover" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300" alt="Cover" />
+    <div class="mini-player-info">
+      <div class="mini-player-title" id="miniPlayerTitle">Selecciona una canción</div>
+      <div class="mini-player-artist" id="miniPlayerArtist">Arachiz Music</div>
+    </div>
+    <div class="mini-player-controls">
+      <button class="mini-player-btn" id="miniPlayerPlayBtn" onclick="event.stopPropagation(); toggleMiniPlayerPlay()" title="Reproducir / Pausar">
+        <i class="fa-solid fa-play" id="miniPlayerPlayIcon"></i>
+      </button>
+      <button class="mini-player-btn" onclick="event.stopPropagation(); playNext()" title="Siguiente canción">
+        <i class="fa-solid fa-forward-step"></i>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* ── Mobile Tab Bar Logic ── */
+    function mobileSwitchTab(view) {
+      // Actualizar botones activos
+      document.querySelectorAll('.mob-tab-btn').forEach(b => b.classList.remove('active'));
+      const tabMap = { dashboard: 'mobTabHome', search: 'mobTabSearch', library: 'mobTabLibrary', player: null };
+      const activeId = tabMap[view];
+      if (activeId) {
+        const btn = document.getElementById(activeId);
+        if (btn) btn.classList.add('active');
+      }
+      // Llamar a switchView si existe
+      if (typeof switchView === 'function') switchView(view);
+    }
+
+    /* ── Mini Player Sync ── */
+    function updateMiniPlayer(title, artist, coverSrc, isPlaying) {
+      const miniPlayer = document.getElementById('mobileMiniPlayer');
+      if (!miniPlayer) return;
+      // Mostrar mini player si hay canción
+      if (title && title !== 'Selecciona una canción') {
+        miniPlayer.classList.remove('hidden');
+      }
+      const titleEl = document.getElementById('miniPlayerTitle');
+      const artistEl = document.getElementById('miniPlayerArtist');
+      const coverEl = document.getElementById('miniPlayerCover');
+      const playIcon = document.getElementById('miniPlayerPlayIcon');
+      if (titleEl) titleEl.textContent = title || 'Sin título';
+      if (artistEl) artistEl.textContent = artist || 'Artista desconocido';
+      if (coverEl && coverSrc) coverEl.src = coverSrc;
+      if (playIcon) {
+        playIcon.className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+      }
+    }
+
+    function toggleMiniPlayerPlay() {
+      const playBtn = document.getElementById('btnPlayerMainPlay');
+      if (playBtn) playBtn.click();
+    }
+
+    /* Hook automático: observar cambios en el cover y título del reproductor principal */
+    document.addEventListener('DOMContentLoaded', function() {
+      const obs = new MutationObserver(function() {
+        const title = document.getElementById('mainPlayerTitle')?.textContent;
+        const artist = document.getElementById('mainPlayerArtist')?.textContent;
+        const cover = document.getElementById('mainPlayerCover')?.src;
+        const isPlaying = document.getElementById('btnPlayerMainPlay')?.querySelector('.fa-pause') !== null;
+        updateMiniPlayer(title, artist, cover, isPlaying);
+      });
+
+      const titleEl = document.getElementById('mainPlayerTitle');
+      const artistEl = document.getElementById('mainPlayerArtist');
+      const coverEl = document.getElementById('mainPlayerCover');
+
+      if (titleEl) obs.observe(titleEl, { childList: true, characterData: true, subtree: true });
+      if (artistEl) obs.observe(artistEl, { childList: true, characterData: true, subtree: true });
+      if (coverEl) obs.observe(coverEl, { attributes: true });
+
+      // Sync play icon
+      const mainPlayBtn = document.getElementById('btnPlayerMainPlay');
+      if (mainPlayBtn) {
+        mainPlayBtn.addEventListener('click', function() {
+          setTimeout(() => {
+            const isPlaying = mainPlayBtn.querySelector('.fa-pause') !== null;
+            const playIcon = document.getElementById('miniPlayerPlayIcon');
+            if (playIcon) playIcon.className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+          }, 100);
+        });
+      }
+
+      // Si la view activa cambia al player, el tab bar se queda sin active
+      // (el mini player ya tiene onclick al reproductor)
+    });
+  </script>
 </body>
 </html>
