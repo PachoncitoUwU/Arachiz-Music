@@ -7306,6 +7306,26 @@ button:active {
   transition: transform 0.12s var(--ease-spring-snappy);
 }
 
+/* ── Estado Activo Prominente para Shuffle y Repeat (Apple Style Glow) ── */
+#btnPlayerShuffle.active,
+#btnPlayerRepeat.active,
+#pbarBtnShuffle.active,
+#pbarBtnRepeat.active {
+  color: #0A84FF !important;
+  background: rgba(10, 132, 255, 0.22) !important;
+  border: 1px solid rgba(10, 132, 255, 0.5) !important;
+  box-shadow: 0 0 16px rgba(10, 132, 255, 0.45), inset 0 0 8px rgba(10, 132, 255, 0.25) !important;
+  transform: scale(1.06);
+}
+
+#pbarBtnShuffle.active i,
+#pbarBtnRepeat.active i,
+#btnPlayerShuffle.active i,
+#btnPlayerRepeat.active i {
+  color: #0A84FF !important;
+  filter: drop-shadow(0 0 6px rgba(10, 132, 255, 0.8));
+}
+
 /* ── Top Nav Layout Fix (Previene que elementos se salgan de la barra) ── */
 .top-nav {
   flex-wrap: nowrap !important;

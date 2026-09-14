@@ -8,9 +8,12 @@ const API_URL = window.location.origin.includes("5555") ? window.location.origin
 let currentView = "player";
 let libraryData = { tracks: [], playlists: [], total: 0, artists_count: 0 };
 let currentQueue = [];
+let unShuffledQueue = [];
 let queueIndex = -1;
 let activeTrack = null;
 let isAudioPlaying = false;
+let isShuffleActive = false;
+let repeatMode = "none"; // 'none' | 'all' | 'one'
 let crossfadeDuration = 4; // segundos (0, 2, 4, 6, 8, 12)
 let isCrossfading = false;
 let currentLyrics = [];
@@ -331,25 +334,147 @@ function setPlayPauseUI(playing) {
   if (dot) dot.classList.toggle("hidden", !playing);
 }
 
+// ── Lógica de Modo Aleatorio (Shuffle) y Repetir (Repeat) ─────────────────────
+function toggleShuffle() {
+  isShuffleActive = !isShuffleActive;
+
+  if (currentQueue.length === 0 && libraryData.tracks.length > 0) {
+    currentQueue = [...libraryData.tracks];
+    unShuffledQueue = [...libraryData.tracks];
+  }
+
+  if (isShuffleActive) {
+    if (unShuffledQueue.length === 0) {
+      unShuffledQueue = [...currentQueue];
+    }
+    // Mantener la canción activa al principio o barajar el resto
+    const currentSong = activeTrack || currentQueue[queueIndex];
+    const otherTracks = currentQueue.filter((t) => !currentSong || t.id !== currentSong.id);
+    
+    // Algoritmo Fisher-Yates
+    for (let i = otherTracks.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
+    }
+
+    currentQueue = currentSong ? [currentSong, ...otherTracks] : otherTracks;
+    queueIndex = currentSong ? 0 : -1;
+    showToast("Aleatorio Activado", "Las canciones se reproducirán en orden aleatorio.");
+  } else {
+    // Restaurar cola original
+    if (unShuffledQueue.length > 0) {
+      const currentSong = activeTrack || currentQueue[queueIndex];
+      currentQueue = [...unShuffledQueue];
+      if (currentSong) {
+        queueIndex = currentQueue.findIndex((t) => t.id === currentSong.id);
+      }
+    }
+    showToast("Aleatorio Desactivado", "Reproducción en orden normal.");
+  }
+
+  updateShuffleRepeatUI();
+}
+
+function toggleRepeat() {
+  if (repeatMode === "none") {
+    repeatMode = "all";
+    showToast("Repetir Todo", "La lista se repetirá continuamente al terminar.");
+  } else if (repeatMode === "all") {
+    repeatMode = "one";
+    showToast("Repetir 1 Canción", "La canción actual se repetirá en bucle.");
+  } else {
+    repeatMode = "none";
+    showToast("Repetición Desactivada", "La reproducción se detendrá al final de la lista.");
+  }
+
+  updateShuffleRepeatUI();
+}
+
+function updateShuffleRepeatUI() {
+  // Botones de Shuffle
+  const btnMainShuffle = document.getElementById("btnPlayerShuffle");
+  const btnPbarShuffle = document.getElementById("pbarBtnShuffle");
+
+  [btnMainShuffle, btnPbarShuffle].forEach((btn) => {
+    if (!btn) return;
+    btn.classList.toggle("active", isShuffleActive);
+    btn.style.setProperty("color", isShuffleActive ? "var(--accent)" : "", isShuffleActive ? "important" : "");
+    btn.style.setProperty("background", isShuffleActive ? "rgba(0, 113, 227, 0.22)" : "", isShuffleActive ? "important" : "");
+    btn.setAttribute("aria-pressed", isShuffleActive ? "true" : "false");
+    btn.title = isShuffleActive ? "Aleatorio Activado (Clic para desactivar)" : "Activar modo aleatorio";
+  });
+
+  // Botones de Repeat
+  const btnMainRepeat = document.getElementById("btnPlayerRepeat");
+  const btnPbarRepeat = document.getElementById("pbarBtnRepeat");
+
+  [btnMainRepeat, btnPbarRepeat].forEach((btn) => {
+    if (!btn) return;
+    const isRepeatOn = repeatMode !== "none";
+    btn.classList.toggle("active", isRepeatOn);
+    btn.style.setProperty("color", isRepeatOn ? "var(--accent)" : "", isRepeatOn ? "important" : "");
+    btn.style.setProperty("background", isRepeatOn ? "rgba(0, 113, 227, 0.22)" : "", isRepeatOn ? "important" : "");
+    btn.setAttribute("aria-pressed", isRepeatOn ? "true" : "false");
+
+    if (repeatMode === "one") {
+      btn.innerHTML = `<i class="fa-solid fa-repeat"></i><span style="font-size: 9px; position: absolute; font-weight: 800; transform: translate(6px, -6px);">1</span>`;
+      btn.title = "Repitiendo canción actual (Clic para desactivar)";
+    } else if (repeatMode === "all") {
+      btn.innerHTML = `<i class="fa-solid fa-repeat"></i>`;
+      btn.title = "Repitiendo toda la lista (Clic para repetir una)";
+    } else {
+      btn.innerHTML = `<i class="fa-solid fa-repeat"></i>`;
+      btn.title = "Activar repetición";
+    }
+  });
+}
+
 function playNextTrack(userTriggered = true) {
   if (currentQueue.length === 0 && libraryData.tracks.length > 0) {
     currentQueue = [...libraryData.tracks];
+    unShuffledQueue = [...libraryData.tracks];
   }
   if (currentQueue.length === 0) return;
 
+  // Si se terminó la canción de forma natural y está en modo repeat="one", repetir la misma
+  if (!userTriggered && repeatMode === "one") {
+    if (activeAudio) {
+      activeAudio.currentTime = 0;
+      activeAudio.play().catch(() => {});
+      return;
+    }
+  }
+
   let nextIdx = queueIndex + 1;
-  if (nextIdx >= currentQueue.length) nextIdx = 0;
+  if (nextIdx >= currentQueue.length) {
+    if (repeatMode === "none" && !userTriggered) {
+      // Fin de la cola sin repetición
+      if (activeAudio) activeAudio.pause();
+      setPlayPauseUI(false);
+      return;
+    }
+    nextIdx = 0; // Vuelve al inicio si es bucle o solicitado por usuario
+  }
   playTrack(currentQueue[nextIdx], nextIdx, true);
 }
 
 function playPreviousTrack() {
   if (currentQueue.length === 0 && libraryData.tracks.length > 0) {
     currentQueue = [...libraryData.tracks];
+    unShuffledQueue = [...libraryData.tracks];
   }
   if (currentQueue.length === 0) return;
 
+  // Si la canción lleva más de 3 segundos, reiniciar la misma canción (comportamiento estándar Apple Music / Spotify)
+  if (activeAudio && activeAudio.currentTime > 3) {
+    activeAudio.currentTime = 0;
+    return;
+  }
+
   let prevIdx = queueIndex - 1;
-  if (prevIdx < 0) prevIdx = currentQueue.length - 1;
+  if (prevIdx < 0) {
+    prevIdx = currentQueue.length - 1;
+  }
   playTrack(currentQueue[prevIdx], prevIdx, true);
 }
 
@@ -410,6 +535,20 @@ function setupGlobalKeyboardControls() {
     if (code === "Space" || key === " " || key === "k" || key === "K") {
       e.preventDefault();
       toggleMainPlayPause();
+      return;
+    }
+
+    // Tecla 's' para Alternar Modo Aleatorio (Shuffle)
+    if (key === "s" || key === "S") {
+      e.preventDefault();
+      toggleShuffle();
+      return;
+    }
+
+    // Tecla 'r' para Alternar Modo Repetición (Repeat)
+    if (key === "r" || key === "R") {
+      e.preventDefault();
+      toggleRepeat();
       return;
     }
 
@@ -1810,6 +1949,12 @@ function setupPlayerControls() {
   const btnMainNext = document.getElementById("btnPlayerNext");
   if (btnMainNext) btnMainNext.addEventListener("click", () => playNextTrack(true));
 
+  const btnMainShuffle = document.getElementById("btnPlayerShuffle");
+  if (btnMainShuffle) btnMainShuffle.addEventListener("click", toggleShuffle);
+
+  const btnMainRepeat = document.getElementById("btnPlayerRepeat");
+  if (btnMainRepeat) btnMainRepeat.addEventListener("click", toggleRepeat);
+
   // Persistent Bar Controls
   const pbarEl = document.getElementById("persistentPlayerBar");
   if (pbarEl) {
@@ -1828,6 +1973,15 @@ function setupPlayerControls() {
 
   const btnPbarNext = document.getElementById("pbarBtnNext");
   if (btnPbarNext) btnPbarNext.addEventListener("click", (e) => { e.stopPropagation(); playNextTrack(true); });
+
+  const btnPbarShuffle = document.getElementById("pbarBtnShuffle");
+  if (btnPbarShuffle) btnPbarShuffle.addEventListener("click", (e) => { e.stopPropagation(); toggleShuffle(); });
+
+  const btnPbarRepeat = document.getElementById("pbarBtnRepeat");
+  if (btnPbarRepeat) btnPbarRepeat.addEventListener("click", (e) => { e.stopPropagation(); toggleRepeat(); });
+
+  // Inicializar estado visual de Shuffle y Repeat
+  updateShuffleRepeatUI();
 
   // Timeline Seeking (Main Player)
   const mainTrack = document.getElementById("mainTimelineTrack");
