@@ -7467,13 +7467,13 @@ button:active {
   padding: 10px 18px 10px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  background: linear-gradient(135deg, rgba(175, 82, 222, 0.45) 0%, rgba(0, 113, 227, 0.45) 100%);
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.45) 0%, rgba(0, 113, 227, 0.55) 100%);
   backdrop-filter: blur(28px) saturate(200%);
   -webkit-backdrop-filter: blur(28px) saturate(200%);
   color: #FFFFFF;
   font-size: 13.5px;
   font-weight: 600;
-  box-shadow: 0 10px 30px rgba(175, 82, 222, 0.35), 0 2px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 113, 227, 0.35), 0 2px 10px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   overflow: hidden;
   transition: transform 0.28s var(--ease-spring-smooth), box-shadow 0.28s var(--ease-spring-smooth);
@@ -7481,7 +7481,7 @@ button:active {
 
 .floating-ai-trigger:hover {
   transform: translateY(-3px) scale(1.04);
-  box-shadow: 0 16px 40px rgba(175, 82, 222, 0.5), 0 0 20px rgba(0, 113, 227, 0.4);
+  box-shadow: 0 16px 40px rgba(10, 132, 255, 0.5), 0 0 20px rgba(0, 113, 227, 0.4);
 }
 
 .floating-ai-trigger:active {
@@ -7528,7 +7528,7 @@ button:active {
   -webkit-backdrop-filter: blur(40px) saturate(190%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 24px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(175, 82, 222, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(10, 132, 255, 0.25);
   overflow: hidden;
   z-index: 10000;
   animation: drawerSlideUp 0.32s var(--ease-spring-smooth);
@@ -7833,5 +7833,477 @@ button:active {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PelotaMp v2.5 — Rediseño Mobile Estilo Referencia (Apple Clean Dark & Blue)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Ocultar elementos desktop en modo móvil y viceversa */
+.mobile-home-header,
+.mobile-section-block,
+.mobile-library-header,
+.player-mobile-device-bar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-only-hero {
+    display: none !important;
+  }
+
+  /* ── 1. Header Inicio Móvil (Saludo, Búsqueda y Filtros) ── */
+  .mobile-home-header {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px 16px 8px 16px;
+    width: 100%;
+  }
+
+  .mobile-home-greeting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobile-greeting-sub {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: -0.2px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .mobile-greeting-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin: 0;
+  }
+
+  .mobile-home-avatar-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    transition: transform 0.2s var(--ease-spring-snappy), background-color 0.2s ease;
+  }
+
+  .mobile-home-avatar-btn:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-home-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-pill);
+    padding: 0 16px;
+    height: 42px;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .mobile-home-search-wrap:focus-within {
+    border-color: #0A84FF;
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 14px rgba(10, 132, 255, 0.3);
+  }
+
+  .mobile-search-ico {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-right: 10px;
+  }
+
+  .mobile-home-search-wrap input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .mobile-home-search-wrap input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .mobile-home-category-pills {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .mobile-home-category-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-cat-pill {
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-cat-pill.active {
+    background: #0A84FF;
+    color: #FFFFFF;
+    border-color: #0A84FF;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.35);
+  }
+
+  /* ── 2. Secciones con Carrusel Horizontal (Escuchado recientemente & Para ti) ── */
+  .mobile-section-block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 0 16px 0;
+    width: 100%;
+  }
+
+  .mobile-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+
+  .mobile-section-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.3px;
+  }
+
+  .mobile-section-more-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 6px;
+    transition: color 0.2s ease;
+  }
+
+  .mobile-section-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: #0A84FF;
+    background: rgba(10, 132, 255, 0.15);
+    border: 1px solid rgba(10, 132, 255, 0.3);
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .mobile-horizontal-carousel {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 4px 16px 8px 16px;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .mobile-horizontal-carousel::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Tarjeta Reciente (Cuadrada Grande con Portada) */
+  .mobile-recent-card {
+    flex: 0 0 132px;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transition: transform 0.2s var(--ease-spring-snappy);
+  }
+
+  .mobile-recent-card:active {
+    transform: scale(0.95);
+  }
+
+  .mobile-recent-thumb-wrap {
+    width: 132px;
+    height: 132px;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  }
+
+  .mobile-recent-thumb-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .mobile-recent-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 8px 0 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-recent-artist {
+    font-size: 11.5px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Tarjetas "Para ti" / Mixes con IA (Gradients Apple: Azul, Cian, Índigo, Naranja) */
+  .mobile-mix-card {
+    flex: 0 0 136px;
+    height: 136px;
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    scroll-snap-align: start;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+    transition: transform 0.22s var(--ease-spring-snappy);
+  }
+
+  .mobile-mix-card:active {
+    transform: scale(0.95);
+  }
+
+  .mobile-mix-card .mix-card-icon {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #FFFFFF;
+  }
+
+  .mobile-mix-card h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #FFFFFF;
+    margin: 0 0 2px 0;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  }
+
+  .mobile-mix-card p {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .mix-card-blue {
+    background: linear-gradient(135deg, #0A84FF 0%, #0040DD 100%);
+  }
+
+  .mix-card-indigo {
+    background: linear-gradient(135deg, #1C2331 0%, #0F3460 100%);
+  }
+
+  .mix-card-cyan {
+    background: linear-gradient(135deg, #00C0FF 0%, #0071E3 100%);
+  }
+
+  .mix-card-orange {
+    background: linear-gradient(135deg, #FF9500 0%, #C93400 100%);
+  }
+
+  /* ── 3. Biblioteca Móvil Organizada ("Tu biblioteca", Segmentos y Crear) ── */
+  .mobile-library-header {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 16px 8px 16px;
+    width: 100%;
+  }
+
+  .mobile-lib-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobile-lib-title-row h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.4px;
+  }
+
+  .mobile-lib-add-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-spring-snappy);
+  }
+
+  .mobile-lib-add-btn:active {
+    transform: scale(0.9);
+  }
+
+  .mobile-lib-segments {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-lib-segments::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-lib-seg-btn {
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-lib-seg-btn.active {
+    background: #0A84FF;
+    color: #FFFFFF;
+    border-color: #0A84FF;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(10, 132, 255, 0.35);
+  }
+
+  .mobile-lib-create-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s var(--ease-spring-snappy);
+  }
+
+  .mobile-lib-create-row:active {
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(0.98);
+  }
+
+  .mobile-lib-create-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(10, 132, 255, 0.15);
+    border: 1px solid rgba(10, 132, 255, 0.3);
+    color: #0A84FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .mobile-lib-create-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .mobile-lib-create-text strong {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .mobile-lib-create-text span {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* ── 4. Barra Inferior de Dispositivo en Reproductor Móvil ── */
+  .player-mobile-device-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 16px;
+    margin-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .player-device-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #30D158;
+  }
+
+  .player-device-indicator i {
+    font-size: 13px;
+  }
+}
+
 
 

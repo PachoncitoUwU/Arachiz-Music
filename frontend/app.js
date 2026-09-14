@@ -67,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupChecklistView();
   setupMobileModal();
   setupFloatingAiAssistant();
+  setupMobileReferenceViews();
 
   // Iniciar en vista Reproductor
   switchView("player");
@@ -1019,6 +1020,9 @@ async function loadLibrary(showFeedback = false) {
 
       // Notificar a la Consola DJ y otros módulos
       window.dispatchEvent(new CustomEvent("arachiz_library_loaded"));
+
+      // Actualizar carruseles de inicio móvil (Escuchado recientemente)
+      renderMobileHomeCarousels();
 
       // Restaurar sesión previa automáticamente (Canción y segundo exacto)
       restorePlaybackSession();
@@ -4659,5 +4663,127 @@ function setupFloatingAiAssistant() {
     chatFeed.scrollTop = chatFeed.scrollHeight;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PelotaMp v2.5 — Módulo de Vistas Móviles Estilo Referencia (Apple Clean Dark)
+// ─────────────────────────────────────────────────────────────────────────────
+function setupMobileReferenceViews() {
+  // 1. Saludo dinámico según la hora
+  const greetingEl = document.getElementById("mobileGreetingSub");
+  if (greetingEl) {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      greetingEl.textContent = "Buenos días,";
+    } else if (hour >= 12 && hour < 19) {
+      greetingEl.textContent = "Buenas tardes,";
+    } else {
+      greetingEl.textContent = "Buenas noches,";
+    }
+  }
+
+  // 2. Búsqueda rápida en el inicio móvil
+  const mobileSearchInput = document.getElementById("mobileHomeSearchInput");
+  if (mobileSearchInput) {
+    mobileSearchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const q = mobileSearchInput.value.trim();
+        if (q) {
+          switchView("downloader");
+          const dlInput = document.getElementById("searchQueryInput");
+          if (dlInput) {
+            dlInput.value = q;
+            triggerAutoSearch(q);
+          }
+        }
+      }
+    });
+  }
+
+  // 3. Píldoras de filtro en Inicio Móvil
+  const catPills = document.querySelectorAll(".mobile-cat-pill");
+  catPills.forEach((pill) => {
+    pill.addEventListener("click", () => {
+      catPills.forEach((p) => p.classList.remove("active"));
+      pill.classList.add("active");
+      const cat = pill.dataset.cat;
+      if (cat === "playlists" || cat === "genres") {
+        switchView("library");
+      } else if (cat === "moods") {
+        switchView("mood");
+      }
+    });
+  });
+
+  // 4. Pestañas de biblioteca móvil ("Playlists", "Álbumes", "Artistas", "Canciones")
+  const libSegs = document.querySelectorAll(".mobile-lib-seg-btn");
+  libSegs.forEach((seg) => {
+    seg.addEventListener("click", () => {
+      libSegs.forEach((s) => s.classList.remove("active"));
+      seg.classList.add("active");
+      const filter = seg.dataset.filter;
+      if (filter === "playlists" || filter === "albums" || filter === "artists") {
+        activeLibraryFilter = "all";
+        renderLibraryTracks();
+      } else {
+        activeLibraryFilter = "all";
+        renderLibraryTracks();
+      }
+    });
+  });
+
+  // 5. Botón Crear Playlist / Descargar
+  const btnCreatePlaylist = document.getElementById("btnMobileCreatePlaylist");
+  if (btnCreatePlaylist) {
+    btnCreatePlaylist.addEventListener("click", () => {
+      switchView("downloader");
+    });
+  }
+
+  // 6. Botón de perfil / ajustes en inicio móvil
+  const btnHomeProfile = document.getElementById("btnMobileHomeProfile");
+  if (btnHomeProfile) {
+    btnHomeProfile.addEventListener("click", () => {
+      const modal = document.getElementById("profileModal");
+      if (modal) modal.classList.remove("hidden");
+    });
+  }
+}
+
+function renderMobileHomeCarousels() {
+  const container = document.getElementById("mobileRecentCarousel");
+  if (!container) return;
+
+  const tracks = libraryData.tracks || [];
+  if (tracks.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 12px; color: var(--text-tertiary); font-size: 13px;">
+        Descarga tus primeras canciones para verlas aquí.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = "";
+  // Tomar hasta 10 canciones para el carrusel
+  const recentSlice = tracks.slice(0, 10);
+  recentSlice.forEach((t, idx) => {
+    const card = document.createElement("div");
+    card.className = "mobile-recent-card";
+    const coverSrc = getTrackCoverSrc(t);
+    card.innerHTML = `
+      <div class="mobile-recent-thumb-wrap">
+        <img src="${coverSrc}" alt="${escapeHtml(t.title)}" loading="lazy" />
+      </div>
+      <span class="mobile-recent-title">${escapeHtml(t.title)}</span>
+      <span class="mobile-recent-artist">${escapeHtml(t.artist || "Artista")}</span>
+    `;
+    card.addEventListener("click", () => {
+      playTrack(t, idx, true);
+      switchView("player");
+    });
+    container.appendChild(card);
+  });
+}
+
 
 

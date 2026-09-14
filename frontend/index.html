@@ -146,7 +146,73 @@
     <!-- VISTA 1: DASHBOARD / INICIO 3D INTERACTIVO                            -->
     <!-- ===================================================================== -->
     <section id="viewDashboard" class="app-view hidden-view">
-      <div class="dashboard-hero-wrap">
+      <!-- Header Móvil Estilo Spotify / Apple Music de la Referencia -->
+      <div class="mobile-home-header">
+        <div class="mobile-home-greeting-row">
+          <div>
+            <span class="mobile-greeting-sub" id="mobileGreetingSub">Buenas noches,</span>
+            <h2 class="mobile-greeting-title">Explora tu música</h2>
+          </div>
+          <button id="btnMobileHomeProfile" class="mobile-home-avatar-btn" title="Perfil y Ajustes">
+            <i class="fa-solid fa-circle-user"></i>
+          </button>
+        </div>
+
+        <div class="mobile-home-search-wrap">
+          <i class="fa-solid fa-magnifying-glass mobile-search-ico"></i>
+          <input type="text" id="mobileHomeSearchInput" placeholder="Buscar canciones, artistas, álbumes..." autocomplete="off" />
+        </div>
+
+        <div class="mobile-home-category-pills">
+          <button class="mobile-cat-pill active" data-cat="all">Inicio</button>
+          <button class="mobile-cat-pill" data-cat="playlists">Listas</button>
+          <button class="mobile-cat-pill" data-cat="genres">Géneros</button>
+          <button class="mobile-cat-pill" data-cat="moods">Estados de ánimo</button>
+        </div>
+      </div>
+
+      <!-- Sección Móvil: Escuchado recientemente (Carrusel Horizontal) -->
+      <div class="mobile-section-block">
+        <div class="mobile-section-header">
+          <h3>Escuchado recientemente</h3>
+          <button class="mobile-section-more-btn" onclick="switchView('library')"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <div class="mobile-horizontal-carousel" id="mobileRecentCarousel">
+          <!-- Tarjetas cargadas dinámicamente -->
+        </div>
+      </div>
+
+      <!-- Sección Móvil: Para ti (Mixes y Moods) -->
+      <div class="mobile-section-block">
+        <div class="mobile-section-header">
+          <h3>Para ti</h3>
+          <span class="mobile-section-tag">Mixes con IA</span>
+        </div>
+        <div class="mobile-horizontal-carousel" id="mobileForYouCarousel">
+          <div class="mobile-mix-card mix-card-blue" onclick="switchView('mood')">
+            <div class="mix-card-icon"><i class="fa-solid fa-bolt"></i></div>
+            <h4>Alta Energía</h4>
+            <p>Mix de canciones</p>
+          </div>
+          <div class="mobile-mix-card mix-card-indigo" onclick="switchView('mood')">
+            <div class="mix-card-icon"><i class="fa-solid fa-headphones"></i></div>
+            <h4>Rap & Trap</h4>
+            <p>Mix urbano</p>
+          </div>
+          <div class="mobile-mix-card mix-card-cyan" onclick="switchView('mood')">
+            <div class="mix-card-icon"><i class="fa-solid fa-coffee"></i></div>
+            <h4>Relax & Chill</h4>
+            <p>Vibra tranquila</p>
+          </div>
+          <div class="mobile-mix-card mix-card-orange" onclick="switchView('mood')">
+            <div class="mix-card-icon"><i class="fa-solid fa-fire"></i></div>
+            <h4>Reggaetón & Fiesta</h4>
+            <p>Mix caliente</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-hero-wrap desktop-only-hero">
         <div class="apple-tag-badge">
           <span class="pulse-dot"></span> Arachiz Music Sound Studio
         </div>
@@ -370,6 +436,17 @@
             </button>
             <button id="btnPlayerRepeat" class="btn-control-subtle" title="Repetir canción">
               <i class="fa-solid fa-repeat"></i>
+            </button>
+          </div>
+
+          <!-- Barra Inferior de Dispositivo y Cola (Estilo Referencia Móvil) -->
+          <div class="player-mobile-device-bar">
+            <div class="player-device-indicator">
+              <i class="fa-solid fa-mobile-screen"></i>
+              <span id="playerCurrentDeviceLabel">Dispositivo: Este celular</span>
+            </div>
+            <button id="btnPlayerOpenQueue" class="btn-icon-subtle" title="Ver lista de reproducción actual" onclick="switchView('library')">
+              <i class="fa-solid fa-list-ul"></i>
             </button>
           </div>
 
@@ -711,7 +788,32 @@
     <!-- VISTA 3: MI BIBLIOTECA DE MÚSICA LOCAL & PLAYLISTS                   -->
     <!-- ===================================================================== -->
     <section id="viewLibrary" class="app-view hidden-view">
-      <div class="library-header-card glass-panel">
+      <!-- Mobile Library Top Header (Estilo Referencia) -->
+      <div class="mobile-library-header">
+        <div class="mobile-lib-title-row">
+          <h2>Tu biblioteca</h2>
+          <button id="btnMobileCreatePlaylist" class="mobile-lib-add-btn" title="Crear nueva lista o descargar">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+
+        <div class="mobile-lib-segments">
+          <button class="mobile-lib-seg-btn active" data-filter="playlists">Playlists</button>
+          <button class="mobile-lib-seg-btn" data-filter="albums">Álbumes</button>
+          <button class="mobile-lib-seg-btn" data-filter="artists">Artistas</button>
+          <button class="mobile-lib-seg-btn" data-filter="all">Canciones</button>
+        </div>
+
+        <div class="mobile-lib-create-row" onclick="switchView('downloader')">
+          <div class="mobile-lib-create-icon"><i class="fa-solid fa-plus"></i></div>
+          <div class="mobile-lib-create-text">
+            <strong>Crear playlist</strong>
+            <span>Descargar o importar canciones</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="library-header-card glass-panel desktop-only-hero">
         <div class="library-header-info">
           <div class="apple-tag-badge"><i class="fa-solid fa-folder-music"></i> Tu Música Local</div>
           <h2 class="library-title">Mi Biblioteca</h2>
